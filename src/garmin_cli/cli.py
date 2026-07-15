@@ -2,6 +2,7 @@ import typer
 
 from garmin_cli import state
 from garmin_cli.commands.auth import auth_app
+from garmin_cli.commands.workout import workout_app
 
 app = typer.Typer(
     add_completion=False,
@@ -23,3 +24,4 @@ def main(
 
 
 app.add_typer(auth_app, name="auth")
+app.add_typer(workout_app, name="workout")
