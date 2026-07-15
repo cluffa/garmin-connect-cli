@@ -29,6 +29,20 @@ def test_parse_duration_bad():
         units.parse_duration("banana")
 
 
+def test_parse_duration_partial_match_garbage_around():
+    with pytest.raises(UsageError):
+        units.parse_duration("xyz90sabc")
+
+
+def test_parse_duration_partial_match_text_prefix():
+    with pytest.raises(UsageError):
+        units.parse_duration("wait10min")
+
+
+def test_parse_duration_hours_only():
+    assert units.parse_duration("1h") == 3600
+
+
 def test_parse_distance_meters():
     assert units.parse_distance("400m") == 400
 
@@ -54,3 +68,23 @@ def test_parse_pace_per_mile():
 def test_parse_pace_bad():
     with pytest.raises(UsageError):
         units.parse_pace("fast")
+
+
+def test_parse_pace_bad_seconds():
+    with pytest.raises(UsageError):
+        units.parse_pace("4:99/km")
+
+
+def test_parse_duration_colon_invalid_seconds():
+    with pytest.raises(UsageError):
+        units.parse_duration("1:99")
+
+
+def test_parse_duration_colon_invalid_minutes():
+    with pytest.raises(UsageError):
+        units.parse_duration("99:00")
+
+
+def test_parse_duration_colon_hhmmss_invalid_minutes():
+    with pytest.raises(UsageError):
+        units.parse_duration("1:99:00")
