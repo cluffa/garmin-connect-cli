@@ -44,44 +44,50 @@ def project_sleep(sleep: dict) -> dict:
     Keys produced (when source data is available):
         duration_hours, deep_pct, light_pct, rem_pct, awake_pct,
         sleep_score, resting_hr.
+
+    Falls back to the raw payload when the input is non-empty but
+    no known keys matched (e.g. API contract drift).
     """
     dto = sleep.get("dailySleepDTO") or {}
     total_sec = dto.get("sleepTimeSeconds")
     if not total_sec:
-        return {}
-
-    result: dict[str, Any] = {
-        "duration_hours": round(total_sec / 3600, 2),
-    }
-
-    stages: list[tuple[str, str]] = [
-        ("deep_pct", "deepSleepSeconds"),
-        ("light_pct", "lightSleepSeconds"),
-        ("rem_pct", "remSleepSeconds"),
-        ("awake_pct", "awakeSleepSeconds"),
-    ]
-    for key, src in stages:
-        sec = dto.get(src)
-        if sec is not None:
-            result[key] = round(sec / total_sec * 100, 2)
-
-    sleep_score_val = (
-        dto.get("sleepScores", {})
-        .get("overall", {})
-        .get("value", {})
-        .get("qualifierValue")
-    )
-    if sleep_score_val is not None:
-        result["sleep_score"] = sleep_score_val
+        result: dict[str, Any] = {}
     else:
-        overall = sleep.get("overallSleepScore")
-        if isinstance(overall, dict):
-            result["sleep_score"] = overall.get("value")
+        result = {
+            "duration_hours": round(total_sec / 3600, 2),
+        }
 
-    rr = sleep.get("restingHeartRate")
-    if rr is not None:
-        result["resting_hr"] = rr
+        stages: list[tuple[str, str]] = [
+            ("deep_pct", "deepSleepSeconds"),
+            ("light_pct", "lightSleepSeconds"),
+            ("rem_pct", "remSleepSeconds"),
+            ("awake_pct", "awakeSleepSeconds"),
+        ]
+        for key, src in stages:
+            sec = dto.get(src)
+            if sec is not None:
+                result[key] = round(sec / total_sec * 100, 2)
 
+        sleep_score_val = (
+            dto.get("sleepScores", {})
+            .get("overall", {})
+            .get("value", {})
+            .get("qualifierValue")
+        )
+        if sleep_score_val is not None:
+            result["sleep_score"] = sleep_score_val
+        else:
+            overall = sleep.get("overallSleepScore")
+            if isinstance(overall, dict):
+                result["sleep_score"] = overall.get("value")
+
+        rr = sleep.get("restingHeartRate")
+        if rr is not None:
+            result["resting_hr"] = rr
+
+    # Fall back to raw payload to prevent silent data loss
+    if not result and sleep:
+        return sleep
     return result
 
 
@@ -90,6 +96,9 @@ def project_health(data: dict, metric: str) -> dict:
 
     Supported *metric* values:
         steps, stress, respiration, spo2, floors.
+
+    Falls back to the raw payload when the input is non-empty but
+    no known keys matched (e.g. API contract drift).
     """
     field_map: dict[str, tuple[str, Any]] = {
         "steps": ("stepCount", None),
@@ -108,12 +117,17 @@ def project_health(data: dict, metric: str) -> dict:
     key, extractor = field_map[metric]
     val = data.get(key)
     if val is None:
-        return {}
+        result: dict[str, Any] = {}
+    elif extractor:
+        v = extractor(val)
+        result = {metric: v} if v is not None else {}
+    else:
+        result = {metric: val}
 
-    if extractor:
-        val = extractor(val)
-
-    return {metric: val} if val is not None else {}
+    # Fall back to raw payload to prevent silent data loss
+    if not result and data:
+        return data
+    return result
 
 
 def project_summary(stats: dict) -> dict:
@@ -122,6 +136,9 @@ def project_summary(stats: dict) -> dict:
     Keys produced (when source data is available):
         steps, step_goal_pct, distance_km, active_minutes,
         highly_active_minutes, resting_hr, hr_range, floors, calories.
+
+    Falls back to the raw payload when the input is non-empty but
+    no known keys matched (e.g. API contract drift).
     """
     result: dict[str, Any] = {}
 
@@ -161,6 +178,9 @@ def project_summary(stats: dict) -> dict:
     if cals is not None:
         result["calories"] = cals
 
+    # Fall back to raw payload to prevent silent data loss
+    if not result and stats:
+        return stats
     return result
 
 
@@ -170,6 +190,9 @@ def project_training_status(status: dict) -> dict:
     Keys produced (when source data is available):
         status, load, load_ratio, hrv_status, hrv_avg,
         acute_load, chronic_load, focus.
+
+    Falls back to the raw payload when the input is non-empty but
+    no known keys matched (e.g. API contract drift).
     """
     result: dict[str, Any] = {}
 
@@ -205,6 +228,9 @@ def project_training_status(status: dict) -> dict:
     if focus:
         result["focus"] = focus
 
+    # Fall back to raw payload to prevent silent data loss
+    if not result and status:
+        return status
     return result
 
 

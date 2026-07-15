@@ -270,3 +270,56 @@ def test_project_training_status_minimal():
 
 def test_project_training_status_empty():
     assert project_training_status({}) == {}
+
+
+# ── Fallback: unexpected keys → raw payload ────────────────────
+
+
+def test_project_sleep_unexpected_keys_fallback():
+    """Non-empty sleep payload with no known keys returns raw payload."""
+    raw = {"unexpectedKey": "value"}
+    out = project_sleep(raw)
+    assert out == raw
+
+
+def test_project_sleep_empty_input_still_empty():
+    """Empty input still returns {} (no data to fall back to)."""
+    assert project_sleep({}) == {}
+
+
+def test_project_summary_unexpected_keys_fallback():
+    """Non-empty stats payload with no known keys returns raw payload."""
+    raw = {"unexpectedKey": "value"}
+    out = project_summary(raw)
+    assert out == raw
+
+
+def test_project_summary_empty_input_still_empty():
+    assert project_summary({}) == {}
+
+
+def test_project_training_status_unexpected_keys_fallback():
+    """Non-empty status payload with no known keys returns raw payload."""
+    raw = {"unexpectedKey": "value"}
+    out = project_training_status(raw)
+    assert out == raw
+
+
+def test_project_training_status_empty_input_still_empty():
+    assert project_training_status({}) == {}
+
+
+def test_project_health_unexpected_keys_fallback():
+    """Non-empty health payload with no known metric keys returns raw payload."""
+    raw = {"unexpectedKey": "value"}
+    out = project_health(raw, "steps")
+    assert out == raw
+
+
+def test_project_health_unexpected_keys_empty_input_still_empty():
+    assert project_health({}, "steps") == {}
+
+
+def test_project_health_unknown_metric_still_empty():
+    """Unknown metric still returns {} even with non-empty payload."""
+    assert project_health({"foo": "bar"}, "unknown") == {}
