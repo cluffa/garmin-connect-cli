@@ -6,6 +6,7 @@ from garmin_cli.commands.activity import activity_app
 from garmin_cli.commands.health import health_app
 from garmin_cli.commands.stats import stats_app
 from garmin_cli.commands.workout import workout_app
+from garmin_cli.commands.meta import register as register_meta
 
 app = typer.Typer(
     add_completion=False,
@@ -31,3 +32,5 @@ app.add_typer(auth_app, name="auth")
 app.add_typer(health_app, name="health")
 app.add_typer(stats_app, name="stats")
 app.add_typer(workout_app, name="workout")
+
+register_meta(app)
