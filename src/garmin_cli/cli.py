@@ -1,6 +1,7 @@
 import typer
 
 from garmin_cli import state
+from garmin_cli.commands.auth import auth_app
 
 app = typer.Typer(
     add_completion=False,
@@ -19,3 +20,6 @@ def main(
         raise typer.BadParameter("format must be 'json' or 'toon'")
     state.fmt = fmt
     state.full = full
+
+
+app.add_typer(auth_app, name="auth")
