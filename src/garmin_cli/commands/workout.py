@@ -9,7 +9,7 @@ import typer
 
 from garmin_cli import client
 from garmin_cli.dates import parse_date, parse_range
-from garmin_cli.output import UsageError, command_output, emit_batch
+from garmin_cli.output import CliError, UsageError, command_output, emit_batch, emit_error
 from garmin_cli.workouts.schema import load_plan, spec_json_schema
 from garmin_cli.workouts.translate import summarize, translate
 
@@ -41,8 +41,11 @@ def create(
     file_opt: str = typer.Option(None, "--file", help="Path to JSON spec."),
 ):
     """Create (and schedule, if 'date' set) one or many workouts."""
-    plan = load_plan(_read_spec(json_opt, file_opt))
-    garmin = client.load_client()
+    try:
+        plan = load_plan(_read_spec(json_opt, file_opt))
+        garmin = client.load_client()
+    except CliError as e:
+        emit_error(e)
     results = []
     for i, spec in enumerate(plan.workouts):
         entry = {"index": i, "name": spec.name}
@@ -61,8 +64,8 @@ def create(
                     if isinstance(sched, dict)
                     else None
                 )
-        except UsageError:
-            raise  # let it propagate — exit code 2 (usage error)
+        except UsageError as e:
+            entry.update(ok=False, error={"type": "usage", "message": e.message})
         except Exception as e:  # noqa: BLE001
             entry.update(ok=False, error={"type": "api", "message": str(e)})
         results.append(entry)
@@ -75,7 +78,10 @@ def validate(
     file_opt: str = typer.Option(None, "--file"),
 ):
     """Validate + translate + estimate a spec without uploading."""
-    plan = load_plan(_read_spec(json_opt, file_opt))
+    try:
+        plan = load_plan(_read_spec(json_opt, file_opt))
+    except CliError as e:
+        emit_error(e)
     results = []
     for i, spec in enumerate(plan.workouts):
         entry = {"index": i}
