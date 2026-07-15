@@ -5,7 +5,7 @@ from datetime import date
 
 from typer.testing import CliRunner
 
-from garmin_cli import client, dates, state
+from garmin_cli import client, dates
 from garmin_cli.cli import app
 
 runner = CliRunner()
@@ -17,10 +17,6 @@ class FakeClient:
 
     def get_daily_steps(self, start, end):
         return [{"start": start, "end": end}]
-
-
-def setup_function():
-    state.fmt = "json"
 
 
 def test_heart_rate_default_today(monkeypatch):

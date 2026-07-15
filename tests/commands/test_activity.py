@@ -5,7 +5,7 @@ import os
 
 from typer.testing import CliRunner
 
-from garmin_cli import client, state
+from garmin_cli import client
 from garmin_cli.cli import app
 
 runner = CliRunner()
@@ -23,10 +23,6 @@ class FakeClient:
     def download_activity(self, activity_id, fmt):
         return b"fake-garmin-data"
 
-
-def setup_function():
-    state.fmt = "json"
-    state.full = False
 
 
 # ── list ──────────────────────────────────────────────────────────────────

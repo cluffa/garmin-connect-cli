@@ -4,15 +4,11 @@ import json
 
 from typer.testing import CliRunner
 
-from garmin_cli import client, state
+from garmin_cli import client
 from garmin_cli.cli import app
 
 runner = CliRunner()
 
-
-def setup_function():
-    state.fmt = "json"
-    state.full = False
 
 
 # ── login ─────────────────────────────────────────────────────────────────
