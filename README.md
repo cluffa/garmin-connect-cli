@@ -126,9 +126,11 @@ Provide exactly one source; `UsageError` is raised otherwise.
 | `activity list --limit 50 --type running` | Filtered list |
 | `activity get <id>` | One activity's details (slim) |
 | `activity download <id> --format-file tcx` | Download TCX, GPX, or FIT file |
+| `activity download <id> --format-file gpx --out race.gpx` | Download with custom output path |
 
-Note: `activity download` uses `--format-file` instead of `--format` because
-`--format` is the reserved global `json`/`toon` option.
+Note: `activity download` uses `--format-file` (values: `tcx`, `gpx`, `fit`) instead of `--format` because
+`--format` is the reserved global `json`/`toon` option. Use `--out <path>` to specify the output file
+(defaults to `<id>.<format>` in the working directory).
 
 ### `health` — Health/wellness data
 
