@@ -47,15 +47,28 @@ def _emit(envelope: dict, stream, code: int) -> None:
     raise SystemExit(code)
 
 
+def emit_error(e: CliError) -> None:
+    """Render a single ``CliError`` to stderr as the standard error envelope.
+
+    Exit codes come from ``e.exit_code``.  Intended for commands that bypass
+    the ``command_output`` decorator (e.g. batch-oriented commands).
+    """
+    _emit(
+        {"ok": False, "error": {"type": e.type, "message": e.message}},
+        sys.stderr,
+        e.exit_code,
+    )
+
+
 def command_output(fn):
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         try:
             data = fn(*args, **kwargs)
         except CliError as e:
-            _emit({"ok": False, "error": {"type": e.type, "message": e.message}}, sys.stderr, e.exit_code)
+            emit_error(e)
         except Exception as e:  # noqa: BLE001 - top-level guard
-            _emit({"ok": False, "error": {"type": "internal", "message": str(e)}}, sys.stderr, 1)
+            emit_error(InternalError(str(e)))
         else:
             _emit({"ok": True, "data": data}, sys.stdout, 0)
 
