@@ -30,9 +30,6 @@ RAW = {
 }
 
 
-def setup_function():
-    state.full = False
-
 
 # ── slim_activity ──────────────────────────────────────────────
 

@@ -4,14 +4,9 @@ import json
 
 from typer.testing import CliRunner
 
-from garmin_cli import state
 from garmin_cli.cli import app
 
 runner = CliRunner()
-
-
-def setup_function():
-    state.fmt = "json"
 
 
 def test_capabilities_lists_groups_and_schema():

@@ -12,11 +12,6 @@ from garmin_cli.output import (
 )
 
 
-def setup_function():
-    state.fmt = "json"
-    state.full = False
-
-
 def test_render_json_compact():
     out = render({"ok": True, "data": {"a": 1}})
     assert out == '{"ok":true,"data":{"a":1}}'

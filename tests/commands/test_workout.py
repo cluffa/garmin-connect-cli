@@ -5,7 +5,7 @@ import json
 import pytest
 from typer.testing import CliRunner
 
-from garmin_cli import client, state
+from garmin_cli import client
 from garmin_cli.cli import app
 from garmin_cli.output import AuthError
 
@@ -50,11 +50,6 @@ class FakeClient:
 
     def get_workouts(self, start=0, limit=100):
         return [{"workoutId": 1, "workoutName": "A"}]
-
-
-def setup_function():
-    state.fmt = "json"
-    state.full = False
 
 
 def test_validate_dry_run(monkeypatch):
