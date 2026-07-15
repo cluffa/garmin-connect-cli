@@ -3,6 +3,7 @@ import typer
 from garmin_cli import state
 from garmin_cli.commands.auth import auth_app
 from garmin_cli.commands.activity import activity_app
+from garmin_cli.commands.health import health_app
 from garmin_cli.commands.workout import workout_app
 
 app = typer.Typer(
@@ -26,4 +27,5 @@ def main(
 
 app.add_typer(activity_app, name="activity")
 app.add_typer(auth_app, name="auth")
+app.add_typer(health_app, name="health")
 app.add_typer(workout_app, name="workout")
