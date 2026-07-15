@@ -30,7 +30,8 @@ def test_summary(monkeypatch):
     monkeypatch.setattr(client, "load_client", lambda: FakeClient())
     monkeypatch.setattr(dates, "parse_date", lambda t, today=None: date(2026, 7, 15))
     result = runner.invoke(app, ["stats", "summary"])
-    assert json.loads(result.stdout)["data"]["totalSteps"] == 8000
+    data = json.loads(result.stdout)["data"]
+    assert data["steps"] == 8000
 
 
 def test_records(monkeypatch):

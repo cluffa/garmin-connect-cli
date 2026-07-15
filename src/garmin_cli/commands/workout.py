@@ -61,6 +61,8 @@ def create(
                     if isinstance(sched, dict)
                     else None
                 )
+        except UsageError:
+            raise  # let it propagate — exit code 2 (usage error)
         except Exception as e:  # noqa: BLE001
             entry.update(ok=False, error={"type": "api", "message": str(e)})
         results.append(entry)
