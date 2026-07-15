@@ -211,10 +211,16 @@ def project_training_status(status: dict) -> dict:
 # ── Generic dispatcher (used by command infrastructure) ────────
 
 
-def project(kind: str, payload: Any) -> Any:
+def project(kind: str, payload: Any, metric: str | None = None) -> Any:
     """Dispatch *payload* through the appropriate projection.
 
     When ``state.full`` is ``True`` the raw payload is returned unchanged.
+
+    Supported *kind* values:
+        activity, activity_list, sleep, health (requires *metric*),
+        summary, training_status.
+    All other kinds pass through unchanged (but still respect the
+    ``--full`` flag).
     """
     if state.full:
         return payload
@@ -223,4 +229,15 @@ def project(kind: str, payload: Any) -> Any:
         return project_activity(payload)
     if kind == "activity_list" and isinstance(payload, list):
         return project_activity_list(payload)
+    if kind == "sleep" and isinstance(payload, dict):
+        return project_sleep(payload)
+    if kind == "health" and isinstance(payload, dict) and metric:
+        return project_health(payload, metric)
+    if kind == "summary" and isinstance(payload, dict):
+        return project_summary(payload)
+    if kind == "training_status" and isinstance(payload, dict):
+        return project_training_status(payload)
+    # Remaining kinds (heart_rate, steps, body_battery, hrv, stress,
+    # weight, readiness, records, progress) pass through raw so
+    # projection functions can be added later without touching callers.
     return payload
