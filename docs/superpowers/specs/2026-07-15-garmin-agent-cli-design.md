@@ -23,7 +23,9 @@ Distribution: a `uv`-managed Python app exposing a single `garmin` command.
   subcommands and generated help.
 - **Garmin access:** `python-garminconnect`, including its typed workout builders in
   `garminconnect.workout` (pydantic models + `create_*` step helpers).
-- **Output format:** `toon-format` for optional TOON encoding (see §8).
+- **Output format:** `python-toon` (imports as `toon`, provides `encode()`) for optional
+  TOON encoding (see §8). Note: the `toon-format` package is only a namespace reservation
+  with no working encoder, so `python-toon` is used instead.
 
 ```
 garmin-connect-cli/
@@ -237,11 +239,12 @@ live in `projections.py`, keyed by endpoint.
 ### 9.2 TOON output — global `--format json|toon`
 
 - Default `json`, the stable guaranteed contract. `--format toon` encodes the **full
-  envelope** as TOON (via `toon-format`) on stdout. Inputs remain JSON (encode-only).
+  envelope** as TOON (via `python-toon`'s `toon.encode()`) on stdout. Inputs remain JSON
+  (encode-only).
 - Biggest win on uniform arrays of objects: `activity list`, `health steps`, weekly steps,
   `stats progress`, `workout list`/`scheduled`, and batch `results`. Marginal on single
   nested blobs — hence per-call.
-- `toon-format` is 0.1.x; keeping JSON as the default and TOON strictly opt-in ensures the
+- `python-toon` is 0.1.x; keeping JSON as the default and TOON strictly opt-in ensures the
   early format never threatens the core contract.
 
 Minimal-token path: slim + TOON. Everything path: `--full --format json`.
