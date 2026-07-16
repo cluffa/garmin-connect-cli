@@ -169,6 +169,16 @@ Note: `activity download` uses `--format-file` (values: `tcx`, `gpx`, `fit`) ins
 | `stats records` | Personal records |
 | `stats progress <start> <end>` | Progress summary between two dates |
 
+### `badge` — Badges and challenges
+
+| Command | Description |
+|---------|-------------|
+| `badge earned [--limit N]` | Recently earned badges (newest first) |
+| `badge in-progress` | Badges currently in progress |
+| `badge available [--start N] [--limit N]` | Available badge challenges |
+| `badge adhoc [--start N] [--limit N]` | Ad-hoc challenges |
+| `badge challenges [--start N] [--limit N]` | All badge challenges |
+
 ### `capabilities` — Agent discovery
 
 ```bash
