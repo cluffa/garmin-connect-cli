@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 import typer
 
 from garmin_cli import client

@@ -1,13 +1,13 @@
 import typer
 
 from garmin_cli import state
+from garmin_cli.commands.activity import activity_app
 from garmin_cli.commands.auth import auth_app
 from garmin_cli.commands.badge import badge_app
-from garmin_cli.commands.activity import activity_app
 from garmin_cli.commands.health import health_app
+from garmin_cli.commands.meta import register as register_meta
 from garmin_cli.commands.stats import stats_app
 from garmin_cli.commands.workout import workout_app
-from garmin_cli.commands.meta import register as register_meta
 
 app = typer.Typer(
     add_completion=False,
