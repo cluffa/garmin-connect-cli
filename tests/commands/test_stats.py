@@ -13,7 +13,12 @@ runner = CliRunner()
 
 class FakeClient:
     def get_user_summary(self, cdate):
-        return {"cdate": cdate, "totalSteps": 8000}
+        return {
+            "cdate": cdate,
+            "totalSteps": 8000,
+            "averageSpo2": 96,
+            "avgWakingRespirationValue": 14.0,
+        }
 
     def get_personal_record(self):
         return [{"typeId": 1}]
@@ -28,6 +33,8 @@ def test_summary(monkeypatch):
     result = runner.invoke(app, ["stats", "summary"])
     data = json.loads(result.stdout)["data"]
     assert data["steps"] == 8000
+    assert data["avg_spo2"] == 96
+    assert data["avg_respiration"] == 14.0
 
 
 def test_records(monkeypatch):
