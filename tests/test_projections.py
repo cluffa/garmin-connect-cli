@@ -7,7 +7,6 @@ from garmin_cli.projections import (
     project,
     project_activity,
     project_activity_list,
-    project_health,
     project_sleep,
     project_summary,
     project_training_status,
@@ -143,60 +142,6 @@ def test_project_sleep_minimal():
     assert project_sleep({}) == {}
 
 
-# ── project_health ─────────────────────────────────────────────
-
-
-HEALTH_RAW = {
-    "bodyBattery": {"chargedByActivity": 80},
-    "stress": {"overallStressLevel": 25},
-    "restingHeartRate": 48,
-    "stepCount": 8500,
-    "floorsAscendedInMeters": 10.0,
-    "respiratoryData": {"averageWearableRespiration": 14.5},
-    "spo2DailySummary": {"averageSpo2": 97},
-}
-
-
-def test_project_health_steps():
-    out = project_health(HEALTH_RAW, "steps")
-    assert out["steps"] == 8500
-
-
-def test_project_health_stress():
-    out = project_health(HEALTH_RAW, "stress")
-    assert out["stress"] == 25
-
-
-def test_project_health_respiration():
-    out = project_health(HEALTH_RAW, "respiration")
-    assert out["respiration"] == 14.5
-
-
-def test_project_health_spo2():
-    out = project_health(HEALTH_RAW, "spo2")
-    assert out["spo2"] == 97
-
-
-def test_project_health_floors():
-    out = project_health(HEALTH_RAW, "floors")
-    assert out["floors"] == 10.0
-
-
-def test_project_health_default():
-    out = project_health(HEALTH_RAW, "steps")
-    assert out["steps"] == 8500
-    assert "stress" not in out
-
-
-def test_project_health_unknown_metric():
-    out = project_health(HEALTH_RAW, "unknown")
-    assert out == {}
-
-
-def test_project_health_empty():
-    assert project_health({}, "steps") == {}
-
-
 # ── project_summary ────────────────────────────────────────────
 
 
@@ -212,8 +157,15 @@ SUMMARY_RAW = {
     "maxHeartRate": 165,
     "floorsAscended": 15,
     "totalKilocalories": 2600.0,
+    "moderateIntensityMinutes": 20,
+    "vigorousIntensityMinutes": 10,
     "averageSpo2": 96,
     "avgWakingRespirationValue": 14.0,
+    "averageStressLevel": 19,
+    "maxStressLevel": 67,
+    "bodyBatteryMostRecentValue": 73,
+    "bodyBatteryHighestValue": 84,
+    "bodyBatteryLowestValue": 47,
 }
 
 
@@ -224,12 +176,28 @@ def test_project_summary():
     assert out["distance_km"] == 8.5
     assert out["active_minutes"] == 60
     assert out["highly_active_minutes"] == 30
+    assert out["moderate_intensity_minutes"] == 20
+    assert out["vigorous_intensity_minutes"] == 10
     assert out["resting_hr"] == 48
     assert out["hr_range"] == "42-165"
     assert out["floors"] == 15
     assert out["calories"] == 2600
     assert out["avg_spo2"] == 96
     assert out["avg_respiration"] == 14.0
+    assert out["avg_stress"] == 19
+    assert out["max_stress"] == 67
+    assert out["body_battery"] == 73
+    assert out["body_battery_high"] == 84
+    assert out["body_battery_low"] == 47
+
+
+def test_project_summary_zero_intensity_minutes_kept():
+    """Zero intensity minutes are real data, not missing — must be included."""
+    out = project_summary(
+        {"totalSteps": 1, "moderateIntensityMinutes": 0, "vigorousIntensityMinutes": 0}
+    )
+    assert out["moderate_intensity_minutes"] == 0
+    assert out["vigorous_intensity_minutes"] == 0
 
 
 def test_project_summary_calories_falls_back_to_calories_out():
@@ -337,19 +305,3 @@ def test_project_training_status_unexpected_keys_fallback():
 
 def test_project_training_status_empty_input_still_empty():
     assert project_training_status({}) == {}
-
-
-def test_project_health_unexpected_keys_fallback():
-    """Non-empty health payload with no known metric keys returns raw payload."""
-    raw = {"unexpectedKey": "value"}
-    out = project_health(raw, "steps")
-    assert out == raw
-
-
-def test_project_health_unexpected_keys_empty_input_still_empty():
-    assert project_health({}, "steps") == {}
-
-
-def test_project_health_unknown_metric_still_empty():
-    """Unknown metric still returns {} even with non-empty payload."""
-    assert project_health({"foo": "bar"}, "unknown") == {}

@@ -91,52 +91,15 @@ def project_sleep(sleep: dict) -> dict:
     return result
 
 
-def project_health(data: dict, metric: str) -> dict:
-    """Extract a single health metric from a daily health snapshot.
-
-    Supported *metric* values:
-        steps, stress, respiration, spo2, floors.
-
-    Falls back to the raw payload when the input is non-empty but
-    no known keys matched (e.g. API contract drift).
-    """
-    field_map: dict[str, tuple[str, Any]] = {
-        "steps": ("stepCount", None),
-        "stress": ("stress", lambda d: d.get("overallStressLevel")),
-        "respiration": (
-            "respiratoryData",
-            lambda d: d.get("averageWearableRespiration"),
-        ),
-        "spo2": ("spo2DailySummary", lambda d: d.get("averageSpo2")),
-        "floors": ("floorsAscendedInMeters", None),
-    }
-
-    if metric not in field_map:
-        return {}
-
-    key, extractor = field_map[metric]
-    val = data.get(key)
-    if val is None:
-        result: dict[str, Any] = {}
-    elif extractor:
-        v = extractor(val)
-        result = {metric: v} if v is not None else {}
-    else:
-        result = {metric: val}
-
-    # Fall back to raw payload to prevent silent data loss
-    if not result and data:
-        return data
-    return result
-
-
 def project_summary(stats: dict) -> dict:
     """Project a daily stats summary to a curated view.
 
     Keys produced (when source data is available):
         steps, step_goal_pct, distance_km, active_minutes,
-        highly_active_minutes, resting_hr, hr_range, floors, calories,
-        avg_spo2, avg_respiration.
+        highly_active_minutes, moderate_intensity_minutes,
+        vigorous_intensity_minutes, resting_hr, hr_range, floors, calories,
+        avg_spo2, avg_respiration, avg_stress, max_stress, body_battery,
+        body_battery_high, body_battery_low.
 
     Falls back to the raw payload when the input is non-empty but
     no known keys matched (e.g. API contract drift).
@@ -161,6 +124,14 @@ def project_summary(stats: dict) -> dict:
     highly = stats.get("highlyActiveSeconds")
     if highly is not None:
         result["highly_active_minutes"] = round(highly / 60)
+
+    moderate = stats.get("moderateIntensityMinutes")
+    if moderate is not None:
+        result["moderate_intensity_minutes"] = moderate
+
+    vigorous = stats.get("vigorousIntensityMinutes")
+    if vigorous is not None:
+        result["vigorous_intensity_minutes"] = vigorous
 
     rr = stats.get("restingHeartRate")
     if rr is not None:
@@ -188,6 +159,26 @@ def project_summary(stats: dict) -> dict:
     resp = stats.get("avgWakingRespirationValue")
     if resp is not None:
         result["avg_respiration"] = resp
+
+    avg_stress = stats.get("averageStressLevel")
+    if avg_stress is not None:
+        result["avg_stress"] = avg_stress
+
+    max_stress = stats.get("maxStressLevel")
+    if max_stress is not None:
+        result["max_stress"] = max_stress
+
+    bb_recent = stats.get("bodyBatteryMostRecentValue")
+    if bb_recent is not None:
+        result["body_battery"] = bb_recent
+
+    bb_high = stats.get("bodyBatteryHighestValue")
+    if bb_high is not None:
+        result["body_battery_high"] = bb_high
+
+    bb_low = stats.get("bodyBatteryLowestValue")
+    if bb_low is not None:
+        result["body_battery_low"] = bb_low
 
     # Fall back to raw payload to prevent silent data loss
     if not result and stats:
@@ -248,14 +239,13 @@ def project_training_status(status: dict) -> dict:
 # ── Generic dispatcher (used by command infrastructure) ────────
 
 
-def project(kind: str, payload: Any, metric: str | None = None) -> Any:
+def project(kind: str, payload: Any) -> Any:
     """Dispatch *payload* through the appropriate projection.
 
     When ``state.full`` is ``True`` the raw payload is returned unchanged.
 
     Supported *kind* values:
-        activity, activity_list, sleep, health (requires *metric*),
-        summary, training_status.
+        activity, activity_list, sleep, summary, training_status.
     All other kinds pass through unchanged (but still respect the
     ``--full`` flag).
     """
@@ -268,8 +258,6 @@ def project(kind: str, payload: Any, metric: str | None = None) -> Any:
         return project_activity_list(payload)
     if kind == "sleep" and isinstance(payload, dict):
         return project_sleep(payload)
-    if kind == "health" and isinstance(payload, dict) and metric:
-        return project_health(payload, metric)
     if kind == "summary" and isinstance(payload, dict):
         return project_summary(payload)
     if kind == "training_status" and isinstance(payload, dict):
