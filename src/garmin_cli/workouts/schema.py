@@ -27,6 +27,7 @@ class Step(BaseModel):
     type: Literal["warmup", "interval", "recovery", "cooldown"]
     duration: Duration
     target: Target | None = None
+    note: str | None = None  # free-text step note (shows on the watch)
 
 
 class RepeatGroup(BaseModel):
@@ -40,6 +41,7 @@ class WorkoutSpec(BaseModel):
     name: str
     sport: Literal["running", "cycling"]
     date: str | None = None
+    notes: str | None = None  # free-text workout description
     steps: list["Step | RepeatGroup"]
 
 

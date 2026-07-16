@@ -62,6 +62,43 @@ def test_pace_target_on_cycling_rejected():
         translate(spec)
 
 
+def test_hr_target_running():
+    spec = _spec(
+        '{"name":"Easy","sport":"running","steps":['
+        '{"type":"interval","duration":{"time":"30min"},"target":{"hr":[140,110]}}]}'
+    )
+    step = translate(spec).to_dict()["workoutSegments"][0]["workoutSteps"][0]
+    assert step["targetType"]["workoutTargetTypeKey"] == "heart.rate.zone"
+    assert step["targetType"]["workoutTargetTypeId"] == 4
+    # values are sorted low..high regardless of input order
+    assert step["targetValueOne"] == 110
+    assert step["targetValueTwo"] == 140
+
+
+def test_step_note_and_workout_notes():
+    spec = _spec(
+        '{"name":"Cruise","sport":"running","notes":"one-hour effort; fuel > 90min",'
+        '"steps":['
+        '{"type":"warmup","duration":{"time":"10min"},"note":"easy Z1-Z2"},'
+        '{"type":"cooldown","duration":{"time":"5min"}}]}'
+    )
+    d = translate(spec).to_dict()
+    assert d["description"] == "one-hour effort; fuel > 90min"
+    steps = d["workoutSegments"][0]["workoutSteps"]
+    assert steps[0]["description"] == "easy Z1-Z2"
+    # a step without a note carries no description key
+    assert "description" not in steps[1]
+
+
+def test_no_notes_leaves_description_unset():
+    spec = _spec(
+        '{"name":"Plain","sport":"running","steps":['
+        '{"type":"warmup","duration":{"time":"10min"}}]}'
+    )
+    d = translate(spec).to_dict()
+    assert "description" not in d or d["description"] is None
+
+
 def test_summarize():
     spec = _spec(
         '{"name":"Easy","sport":"running","steps":['
