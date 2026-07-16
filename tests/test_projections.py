@@ -212,6 +212,8 @@ SUMMARY_RAW = {
     "floorsAscended": 15,
     "caloriesOut": 2100,
     "totalKilocalories": 2600,
+    "averageSpo2": 96,
+    "avgWakingRespirationValue": 14.0,
 }
 
 
@@ -226,10 +228,18 @@ def test_project_summary():
     assert out["hr_range"] == "42-165"
     assert out["floors"] == 15
     assert out["calories"] == 2100
+    assert out["avg_spo2"] == 96
+    assert out["avg_respiration"] == 14.0
 
 
 def test_project_summary_empty():
     assert project_summary({}) == {}
+
+
+def test_project_summary_omits_missing_spo2_and_respiration():
+    out = project_summary({"totalSteps": 100})
+    assert "avg_spo2" not in out
+    assert "avg_respiration" not in out
 
 
 # ── project_training_status ────────────────────────────────────

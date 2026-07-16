@@ -163,7 +163,7 @@ Note: `activity download` uses `--format-file` (values: `tcx`, `gpx`, `fit`) ins
 
 | Command | Description |
 |---------|-------------|
-| `stats summary [date]` | Daily user summary (steps, distance, HR, floors, calories) |
+| `stats summary [date]` | Daily user summary (steps, distance, HR, floors, calories, avg SpO₂, avg respiration) |
 | `stats training-status [date]` | Training status (load, load ratio, HRV, focus) |
 | `stats readiness [date]` | Training readiness score |
 | `stats records` | Personal records |

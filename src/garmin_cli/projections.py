@@ -135,7 +135,8 @@ def project_summary(stats: dict) -> dict:
 
     Keys produced (when source data is available):
         steps, step_goal_pct, distance_km, active_minutes,
-        highly_active_minutes, resting_hr, hr_range, floors, calories.
+        highly_active_minutes, resting_hr, hr_range, floors, calories,
+        avg_spo2, avg_respiration.
 
     Falls back to the raw payload when the input is non-empty but
     no known keys matched (e.g. API contract drift).
@@ -177,6 +178,14 @@ def project_summary(stats: dict) -> dict:
     cals = stats.get("caloriesOut")
     if cals is not None:
         result["calories"] = cals
+
+    spo2 = stats.get("averageSpo2")
+    if spo2 is not None:
+        result["avg_spo2"] = spo2
+
+    resp = stats.get("avgWakingRespirationValue")
+    if resp is not None:
+        result["avg_respiration"] = resp
 
     # Fall back to raw payload to prevent silent data loss
     if not result and stats:
