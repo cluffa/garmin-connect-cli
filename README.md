@@ -29,28 +29,12 @@ environment variables. The authenticated session token is cached to
 ### Android / Termux
 
 `pydantic-core` has no upstream wheel for Android, so `uv sync` on Termux
-will try to build it from source (needs a Rust toolchain, often fails or
-takes ~15 min). [`android-pydantic-core`](https://github.com/Eutalix/android-pydantic-core)
-publishes pre-built wheels for Termux, but **not** automatically via
-`uv sync`: its wheels are tagged as plain `linux_*` rather than
-Android-specific, so wiring it in as a default index would risk a regular
-Linux install picking up a Termux-patched wheel. The index is also
-frequently behind the exact `pydantic-core` version this project's
-`pydantic` pin requires, so it can't reliably back a normal sync anyway.
-
-Instead, on Termux, force-install the newest version the mirror actually has
-built (check https://eutalix.github.io/android-pydantic-core/pydantic-core/
-for the latest available version) after `uv sync` fails or times out:
-
-```bash
-uv pip install --reinstall \
-  --extra-index-url https://eutalix.github.io/android-pydantic-core/ \
-  "pydantic==<version>" "pydantic-core==<matching-version>"
-```
-
-This intentionally diverges from `uv.lock` on Termux — there's no released
-`pydantic-core` wheel for Android that matches the pinned version until the
-mirror catches up.
+would otherwise try to build it from source (needs a Rust toolchain, often
+fails). `pyproject.toml` adds
+[`android-pydantic-core`](https://github.com/Eutalix/android-pydantic-core)
+as an extra `uv` index, which publishes pre-built Android wheels for
+`pydantic-core`; `uv sync` picks them up automatically on Termux and is a
+no-op on other platforms.
 
 ## Global Options
 
