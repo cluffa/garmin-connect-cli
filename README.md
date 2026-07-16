@@ -23,8 +23,20 @@ uv run garmin auth login        # prompts for MFA if enabled; caches token
 ```
 
 Credentials are sourced from the `GARMIN_EMAIL` and `GARMIN_PASSWORD`
-environment variables. The authenticated session token is cached to
-`~/.garmin-cli/` and reused on subsequent calls.
+environment variables. The authenticated session token is cached and reused on
+subsequent calls.
+
+### Token store
+
+The CLI shares its token store with the
+[Garmin Workout Pipeline MCP server](https://github.com/cluffa/Garmin-Workout-Pipeline),
+so a single login works for both tools. The store is resolved in this order:
+
+1. `$GARMINTOKENS`, when set — explicit override.
+2. `~/.garmin-workout-pipeline/tokens` — the MCP server's token store (default).
+   Authenticate through either tool and the other reuses the same session.
+3. `~/.garmin-cli/` — legacy CLI-only location, used only when it already holds
+   a token and the MCP store does not.
 
 ## Global Options
 
