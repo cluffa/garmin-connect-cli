@@ -16,6 +16,13 @@ garmin = "garmin_cli.cli:app"
 [dependency-groups]
 dev = ["pytest"]
 
+# Pre-built pydantic-core wheels for Android/Termux (no manylinux wheel exists
+# upstream, so builds from sdist require a Rust toolchain and often fail).
+# Only android_* wheels live here; other platforms keep resolving from PyPI.
+[[tool.uv.index]]
+name = "android-pydantic-core"
+url = "https://eutalix.github.io/android-pydantic-core/"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
