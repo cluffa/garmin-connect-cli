@@ -18,10 +18,16 @@ dev = ["pytest"]
 
 # Pre-built pydantic-core wheels for Android/Termux (no manylinux wheel exists
 # upstream, so builds from sdist require a Rust toolchain and often fail).
-# Only android_* wheels live here; other platforms keep resolving from PyPI.
+# `explicit = true` keeps this out of default resolution/locking: its wheels
+# are tagged as plain `linux_*` (not android-specific), so an implicit index
+# would risk a regular Linux install picking up a Termux-patched wheel. It's
+# also frequently behind the exact pydantic-core version pydantic pins, so it
+# can't be wired in as an automatic fallback anyway — see README for the
+# manual install command Termux users need.
 [[tool.uv.index]]
 name = "android-pydantic-core"
 url = "https://eutalix.github.io/android-pydantic-core/"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]
