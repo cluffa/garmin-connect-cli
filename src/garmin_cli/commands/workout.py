@@ -9,7 +9,14 @@ import typer
 
 from garmin_cli import client
 from garmin_cli.dates import parse_date, parse_range
-from garmin_cli.output import CliError, UsageError, command_output, emit_batch, emit_error
+from garmin_cli.output import (
+    CliError,
+    InternalError,
+    UsageError,
+    command_output,
+    emit_batch,
+    emit_error,
+)
 from garmin_cli.workouts.schema import load_plan, spec_json_schema
 from garmin_cli.workouts.translate import summarize, translate
 
@@ -46,6 +53,10 @@ def create(
         garmin = client.load_client()
     except CliError as e:
         emit_error(e)
+    except OSError as e:
+        emit_error(UsageError(str(e)))
+    except Exception as e:  # noqa: BLE001 - no traceback should reach the user
+        emit_error(InternalError(str(e)))
     results = []
     for i, spec in enumerate(plan.workouts):
         entry = {"index": i, "name": spec.name}
@@ -82,6 +93,10 @@ def validate(
         plan = load_plan(_read_spec(json_opt, file_opt))
     except CliError as e:
         emit_error(e)
+    except OSError as e:
+        emit_error(UsageError(str(e)))
+    except Exception as e:  # noqa: BLE001 - no traceback should reach the user
+        emit_error(InternalError(str(e)))
     results = []
     for i, spec in enumerate(plan.workouts):
         entry = {"index": i}

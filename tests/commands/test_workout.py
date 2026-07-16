@@ -119,6 +119,27 @@ def test_create_malformed_json_yields_usage_envelope():
     }
 
 
+def test_validate_missing_file_yields_usage_envelope(tmp_path):
+    """A bad --file path must yield a usage envelope, not a raw traceback."""
+    missing = tmp_path / "nope.json"
+    result = runner.invoke(app, ["workout", "validate", "--file", str(missing)])
+    assert result.exit_code == 2
+    err = json.loads(result.stderr)
+    assert err["ok"] is False
+    assert err["error"]["type"] == "usage"
+    assert "Traceback" not in result.stderr
+
+
+def test_create_missing_file_yields_usage_envelope(tmp_path):
+    """A bad --file path on create must yield a usage envelope, not a traceback."""
+    missing = tmp_path / "nope.json"
+    result = runner.invoke(app, ["workout", "create", "--file", str(missing)])
+    assert result.exit_code == 2
+    err = json.loads(result.stderr)
+    assert err["error"]["type"] == "usage"
+    assert "Traceback" not in result.stderr
+
+
 def test_create_unauthenticated_yields_auth_envelope(monkeypatch):
     """AuthError during client load must produce an auth envelope on stderr, exit 3."""
     monkeypatch.setattr(
