@@ -111,6 +111,27 @@ def test_download_invalid_format(monkeypatch):
     assert err["error"]["type"] == "usage"
 
 
+def test_download_rejects_path_traversal(monkeypatch, tmp_path):
+    """A traversal-laden activity id must not derive an out-of-cwd path."""
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["activity", "download", "../../etc/passwd"])
+    assert result.exit_code == 2
+    assert json.loads(result.stderr)["error"]["type"] == "usage"
+    assert not os.path.exists(tmp_path.parent.parent / "etc" / "passwd.tcx")
+
+
+def test_download_traversal_id_allowed_with_explicit_out(monkeypatch, tmp_path):
+    """An explicit --out bypasses the id-derived filename guard."""
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(
+        app, ["activity", "download", "../weird", "--out", "safe.tcx"]
+    )
+    assert result.exit_code == 0
+    assert os.path.isfile("safe.tcx")
+
+
 # ── help ──────────────────────────────────────────────────────────────────
 
 

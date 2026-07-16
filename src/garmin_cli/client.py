@@ -28,6 +28,21 @@ def _has_tokens(path: Path) -> bool:
     return (path / _TOKEN_FILE).exists()
 
 
+def _ensure_private_dir(store: str) -> None:
+    """Create the token-store directory restricted to the current user.
+
+    Cached tokens grant access to the Garmin account, so the directory is
+    created with ``0o700`` and tightened to ``0o700`` if it already exists
+    with looser permissions (best-effort; ignored where chmod is unsupported).
+    """
+    path = Path(store)
+    path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        path.chmod(0o700)
+    except OSError:
+        pass
+
+
 def token_dir() -> str:
     """Return the directory used for cached token files.
 
@@ -80,7 +95,7 @@ def do_login(prompt_mfa, factory=Garmin) -> None:
         raise AuthError("GARMIN_EMAIL and GARMIN_PASSWORD must be set")
 
     store = token_dir()
-    Path(store).mkdir(parents=True, exist_ok=True)
+    _ensure_private_dir(store)
     garmin = factory(email=email, password=password, prompt_mfa=prompt_mfa)
     try:
         garmin.login(store)

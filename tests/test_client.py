@@ -98,6 +98,30 @@ def test_do_login_success(monkeypatch):
     client.do_login(prompt_mfa=lambda: "000000", factory=FakeGarmin)
 
 
+def test_do_login_creates_private_token_dir(monkeypatch, tmp_path):
+    """The token store must be created 0o700 — tokens are account secrets."""
+    store = tmp_path / "tokens"
+    monkeypatch.setenv("GARMINTOKENS", str(store))
+    monkeypatch.setenv("GARMIN_EMAIL", "a@b.com")
+    monkeypatch.setenv("GARMIN_PASSWORD", "pw")
+    FakeGarmin.fail = False
+    client.do_login(prompt_mfa=lambda: "000000", factory=FakeGarmin)
+    assert store.is_dir()
+    assert (store.stat().st_mode & 0o777) == 0o700
+
+
+def test_do_login_tightens_existing_loose_dir(monkeypatch, tmp_path):
+    """A pre-existing world-readable store is tightened to 0o700 on login."""
+    store = tmp_path / "tokens"
+    store.mkdir(mode=0o755)
+    monkeypatch.setenv("GARMINTOKENS", str(store))
+    monkeypatch.setenv("GARMIN_EMAIL", "a@b.com")
+    monkeypatch.setenv("GARMIN_PASSWORD", "pw")
+    FakeGarmin.fail = False
+    client.do_login(prompt_mfa=lambda: "000000", factory=FakeGarmin)
+    assert (store.stat().st_mode & 0o777) == 0o700
+
+
 def test_do_login_failure(monkeypatch):
     monkeypatch.setenv("GARMIN_EMAIL", "a@b.com")
     monkeypatch.setenv("GARMIN_PASSWORD", "pw")

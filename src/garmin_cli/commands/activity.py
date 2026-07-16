@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import typer
 from garminconnect import Garmin
 
@@ -46,6 +48,11 @@ def download(
     """Download an activity file."""
     if fmt not in _FORMATS:
         raise UsageError("format must be tcx, gpx, or fit")
+    if out is None and not re.fullmatch(r"[A-Za-z0-9_-]+", activity_id):
+        raise UsageError(
+            "activity_id must be alphanumeric to derive a filename; "
+            "pass --out to choose an explicit path"
+        )
     data = client.load_client().download_activity(activity_id, _FORMATS[fmt])
     path = out or f"activity_{activity_id}.{fmt}"
     with open(path, "wb") as fh:
