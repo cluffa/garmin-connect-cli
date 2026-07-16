@@ -35,6 +35,30 @@ def test_batch_with_repeat():
     assert len(group.steps) == 2
 
 
+def test_note_and_notes_accepted():
+    plan = load_plan(
+        '{"name":"x","sport":"running","notes":"coach note",'
+        '"steps":[{"type":"warmup","duration":{"time":"5min"},"note":"easy"}]}'
+    )
+    w = plan.workouts[0]
+    assert w.notes == "coach note"
+    assert w.steps[0].note == "easy"
+
+
+def test_note_and_notes_optional():
+    w = load_plan(SINGLE).workouts[0]
+    assert w.notes is None
+    assert w.steps[0].note is None
+
+
+def test_unknown_step_field_still_rejected():
+    with pytest.raises(UsageError):
+        load_plan(
+            '{"name":"x","sport":"running",'
+            '"steps":[{"type":"warmup","duration":{"time":"5min"},"bogus":1}]}'
+        )
+
+
 def test_invalid_json():
     with pytest.raises(UsageError):
         load_plan("{not json")

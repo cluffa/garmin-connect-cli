@@ -8,7 +8,6 @@ from garminconnect.workout import (
     RunningWorkout,
     SportType,
     StepType,
-    TargetType,
     WorkoutSegment,
 )
 
@@ -21,6 +20,20 @@ _STEP_TYPE = {
     "cooldown": (StepType.COOLDOWN, "cooldown", 2),
     "interval": (StepType.INTERVAL, "interval", 3),
     "recovery": (StepType.RECOVERY, "recovery", 4),
+}
+
+# Canonical Garmin workoutTargetTypeId values, keyed by workoutTargetTypeKey.
+# Defined here rather than pulled from garminconnect.workout.TargetType
+# because that enum's member names have drifted across library versions
+# (e.g. HEART_RATE_ZONE -> HEART_RATE), which silently broke every targeted
+# step. Keeping the mapping local decouples us from that churn.
+_TARGET_TYPE_ID = {
+    "no.target": 1,
+    "power.zone": 2,
+    "cadence.zone": 3,
+    "heart.rate.zone": 4,
+    "speed.zone": 5,
+    "pace.zone": 6,
 }
 
 # Sport default speeds (m/s) for estimating distance-step duration when no target given.
@@ -60,30 +73,30 @@ def _target(target, sport: str) -> tuple[dict | None, float | None, float | None
         if sport != "running":
             raise UsageError("pace target is only valid for running")
         v1, v2 = sorted(units.parse_pace(p) for p in target.pace)
-        return _target_dict(TargetType.PACE_ZONE, "pace.zone"), v1, v2
+        return _target_dict("pace.zone"), v1, v2
     if target.speed is not None:
         v1, v2 = sorted(units.parse_pace(s) for s in target.speed)
-        return _target_dict(TargetType.SPEED_ZONE, "speed.zone"), v1, v2
+        return _target_dict("speed.zone"), v1, v2
     if target.power is not None:
         if sport != "cycling":
             raise UsageError("power target is only valid for cycling")
         v1, v2 = sorted(float(x) for x in target.power)
-        return _target_dict(TargetType.POWER_ZONE, "power.zone"), v1, v2
+        return _target_dict("power.zone"), v1, v2
     if target.hr is not None:
         v1, v2 = sorted(float(x) for x in target.hr)
-        return _target_dict(TargetType.HEART_RATE_ZONE, "heart.rate.zone"), v1, v2
+        return _target_dict("heart.rate.zone"), v1, v2
     return None, None, None
 
 
-def _target_dict(type_id: int, key: str) -> dict:
-    return {"workoutTargetTypeId": type_id, "workoutTargetTypeKey": key, "displayOrder": 1}
+def _target_dict(key: str) -> dict:
+    return {
+        "workoutTargetTypeId": _TARGET_TYPE_ID[key],
+        "workoutTargetTypeKey": key,
+        "displayOrder": 1,
+    }
 
 
-_NO_TARGET = {
-    "workoutTargetTypeId": TargetType.NO_TARGET,
-    "workoutTargetTypeKey": "no.target",
-    "displayOrder": 1,
-}
+_NO_TARGET = _target_dict("no.target")
 
 
 def _estimate_step_seconds(duration, target, sport: str) -> float:
@@ -112,6 +125,9 @@ def _build_step(step: Step, order: int, sport: str) -> tuple[ExecutableStep, flo
     if v1 is not None:
         executable.targetValueOne = v1
         executable.targetValueTwo = v2
+    if step.note:
+        # Garmin renders a step's `description` as its on-watch note.
+        executable.description = step.note
     return executable, _estimate_step_seconds(step.duration, step.target, sport)
 
 
@@ -159,11 +175,14 @@ def translate(spec: WorkoutSpec):
         workoutSteps=steps,
     )
     cls = RunningWorkout if spec.sport == "running" else CyclingWorkout
-    return cls(
+    workout = cls(
         workoutName=spec.name,
         estimatedDurationInSecs=int(round(total_secs)),
         workoutSegments=[segment],
     )
+    if spec.notes:
+        workout.description = spec.notes
+    return workout
 
 
 def summarize(spec: WorkoutSpec) -> dict:
