@@ -200,9 +200,10 @@ def test_project_health_empty():
 # ── project_summary ────────────────────────────────────────────
 
 
+# Field names mirror a real get_user_summary payload.
 SUMMARY_RAW = {
     "totalSteps": 12000,
-    "stepGoal": 10000,
+    "dailyStepGoal": 10000,
     "totalDistanceMeters": 8500,
     "activeSeconds": 3600,
     "highlyActiveSeconds": 1800,
@@ -210,8 +211,7 @@ SUMMARY_RAW = {
     "minHeartRate": 42,
     "maxHeartRate": 165,
     "floorsAscended": 15,
-    "caloriesOut": 2100,
-    "totalKilocalories": 2600,
+    "totalKilocalories": 2600.0,
     "averageSpo2": 96,
     "avgWakingRespirationValue": 14.0,
 }
@@ -227,9 +227,15 @@ def test_project_summary():
     assert out["resting_hr"] == 48
     assert out["hr_range"] == "42-165"
     assert out["floors"] == 15
-    assert out["calories"] == 2100
+    assert out["calories"] == 2600
     assert out["avg_spo2"] == 96
     assert out["avg_respiration"] == 14.0
+
+
+def test_project_summary_calories_falls_back_to_calories_out():
+    """Older payloads without totalKilocalories still yield calories."""
+    out = project_summary({"totalSteps": 1, "caloriesOut": 2100})
+    assert out["calories"] == 2100
 
 
 def test_project_summary_empty():
@@ -240,6 +246,23 @@ def test_project_summary_omits_missing_spo2_and_respiration():
     out = project_summary({"totalSteps": 100})
     assert "avg_spo2" not in out
     assert "avg_respiration" not in out
+
+
+def test_project_summary_real_payload_keys():
+    """Regression: real get_user_summary keys populate goal, calories, respiration."""
+    raw = {
+        "totalSteps": 487,
+        "dailyStepGoal": 8000,
+        "totalKilocalories": 1163.0,
+        "floorsAscended": 4.0,
+        "averageSpo2": None,  # device recorded no SpO2 today
+        "avgWakingRespirationValue": 11.0,
+    }
+    out = project_summary(raw)
+    assert out["step_goal_pct"] == pytest.approx(6.1)
+    assert out["calories"] == 1163
+    assert out["avg_respiration"] == 11.0
+    assert "avg_spo2" not in out
 
 
 # ── project_training_status ────────────────────────────────────
