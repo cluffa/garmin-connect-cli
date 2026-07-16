@@ -10,17 +10,43 @@ from garminconnect import Garmin
 
 from garmin_cli.output import AuthError
 
+# Token store used by the Garmin Workout Pipeline MCP server
+# (https://github.com/cluffa/Garmin-Workout-Pipeline). Sharing this directory
+# lets the CLI reuse the session authenticated by the MCP server — and vice
+# versa — so a single `garmin auth login` (or MCP login) works for both.
+MCP_TOKEN_DIR = Path.home() / ".garmin-workout-pipeline" / "tokens"
+
+# Location used by earlier CLI-only versions, kept for backward compatibility.
+LEGACY_TOKEN_DIR = Path.home() / ".garmin-cli"
+
+# File written by garminconnect inside a token-store directory.
+_TOKEN_FILE = "garmin_tokens.json"
+
+
+def _has_tokens(path: Path) -> bool:
+    """Return ``True`` when *path* holds a cached Garmin token file."""
+    return (path / _TOKEN_FILE).exists()
+
 
 def token_dir() -> str:
     """Return the directory used for cached token files.
 
-    Uses the ``GARMINTOKENS`` environment variable if set, otherwise
-    ``~/.garmin-cli``.
+    Precedence:
+
+    1. The ``GARMINTOKENS`` environment variable, when set — explicit override.
+    2. The Garmin Workout Pipeline MCP server's token store, so the CLI reuses
+       the session authenticated through the MCP server (and writes new logins
+       where the MCP server will find them).
+    3. The legacy ``~/.garmin-cli`` directory, but only when it already holds a
+       token and the MCP store does not — backward compatibility for existing
+       CLI-only installs.
     """
     env = os.getenv("GARMINTOKENS")
     if env:
         return env
-    return str(Path.home() / ".garmin-cli")
+    if not _has_tokens(MCP_TOKEN_DIR) and _has_tokens(LEGACY_TOKEN_DIR):
+        return str(LEGACY_TOKEN_DIR)
+    return str(MCP_TOKEN_DIR)
 
 
 def load_client(factory=Garmin):
