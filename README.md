@@ -26,6 +26,16 @@ Credentials are sourced from the `GARMIN_EMAIL` and `GARMIN_PASSWORD`
 environment variables. The authenticated session token is cached to
 `~/.garmin-cli/` and reused on subsequent calls.
 
+### Android / Termux
+
+`pydantic-core` has no upstream wheel for Android, so `uv sync` on Termux
+would otherwise try to build it from source (needs a Rust toolchain, often
+fails). `pyproject.toml` adds
+[`android-pydantic-core`](https://github.com/Eutalix/android-pydantic-core)
+as an extra `uv` index, which publishes pre-built Android wheels for
+`pydantic-core`; `uv sync` picks them up automatically on Termux and is a
+no-op on other platforms.
+
 ## Global Options
 
 | Option | Default | Description |
