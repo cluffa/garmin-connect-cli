@@ -84,12 +84,13 @@ schema — everything an agent needs to discover the interface in a single call.
       "name": "Wk1 Tue",
       "sport": "running",
       "date": "2026-07-21",
+      "notes": "cruise intervals at one-hour effort",
       "steps": [
-        {"type": "warmup", "duration": {"time": "10min"}},
+        {"type": "warmup", "duration": {"time": "10min"}, "note": "easy Z1–Z2"},
         {
           "repeat": 5,
           "steps": [
-            {"type": "interval", "duration": {"distance": "1km"}, "target": {"pace": ["4:00/km", "3:50/km"]}},
+            {"type": "interval", "duration": {"distance": "1km"}, "target": {"pace": ["4:00/km", "3:50/km"]}, "note": "one-hour effort"},
             {"type": "recovery", "duration": {"time": "2min"}}
           ]
         },
@@ -103,6 +104,8 @@ schema — everything an agent needs to discover the interface in a single call.
 - **Step types:** `warmup`, `interval`, `recovery`, `cooldown`
 - **Duration:** `time` (`"10min"`, `"45s"`) or `distance` (`"1km"`, `"400m"`, `"1mi"`)
 - **Target:** optional `pace` (running), `speed`, `power` (cycling), or `hr`
+- **Note:** optional per-step `note` — free text shown as the step's note on the watch
+- **Notes:** optional per-workout `notes` — free text set as the workout description
 - **Repeat groups:** `{"repeat": N, "steps": [...]}` for intervals
 - **Date:** optional; when present, `create` also schedules the workout
 - **Batch:** a single spec can include multiple workouts; partial failures report
