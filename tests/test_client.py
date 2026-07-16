@@ -31,10 +31,37 @@ def test_token_dir_env(monkeypatch, tmp_path):
     assert client.token_dir() == str(tmp_path)
 
 
-def test_token_dir_default(monkeypatch):
+def test_token_dir_default_is_mcp_store(monkeypatch, tmp_path):
+    """With no override and no existing tokens, default to the MCP store."""
     monkeypatch.delenv("GARMINTOKENS", raising=False)
-    result = client.token_dir()
-    assert result.endswith(".garmin-cli")
+    monkeypatch.setattr(client, "MCP_TOKEN_DIR", tmp_path / "mcp")
+    monkeypatch.setattr(client, "LEGACY_TOKEN_DIR", tmp_path / "legacy")
+    assert client.token_dir() == str(tmp_path / "mcp")
+
+
+def test_token_dir_prefers_mcp_when_mcp_has_tokens(monkeypatch, tmp_path):
+    """The MCP store wins even when the legacy dir also holds a token."""
+    monkeypatch.delenv("GARMINTOKENS", raising=False)
+    mcp = tmp_path / "mcp"
+    legacy = tmp_path / "legacy"
+    for d in (mcp, legacy):
+        d.mkdir()
+        (d / "garmin_tokens.json").write_text("{}")
+    monkeypatch.setattr(client, "MCP_TOKEN_DIR", mcp)
+    monkeypatch.setattr(client, "LEGACY_TOKEN_DIR", legacy)
+    assert client.token_dir() == str(mcp)
+
+
+def test_token_dir_falls_back_to_legacy(monkeypatch, tmp_path):
+    """Use the legacy dir only when it has a token and the MCP store does not."""
+    monkeypatch.delenv("GARMINTOKENS", raising=False)
+    mcp = tmp_path / "mcp"
+    legacy = tmp_path / "legacy"
+    legacy.mkdir()
+    (legacy / "garmin_tokens.json").write_text("{}")
+    monkeypatch.setattr(client, "MCP_TOKEN_DIR", mcp)
+    monkeypatch.setattr(client, "LEGACY_TOKEN_DIR", legacy)
+    assert client.token_dir() == str(legacy)
 
 
 # ── load_client ───────────────────────────────────────────────────────────
