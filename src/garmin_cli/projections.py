@@ -146,7 +146,7 @@ def project_summary(stats: dict) -> dict:
     steps = stats.get("totalSteps")
     if steps is not None:
         result["steps"] = steps
-        goal = stats.get("stepGoal")
+        goal = stats.get("dailyStepGoal") or stats.get("stepGoal")
         if goal:
             result["step_goal_pct"] = round(steps / goal * 100, 1)
 
@@ -175,9 +175,11 @@ def project_summary(stats: dict) -> dict:
     if floors is not None:
         result["floors"] = floors
 
-    cals = stats.get("caloriesOut")
+    cals = stats.get("totalKilocalories")
+    if cals is None:
+        cals = stats.get("caloriesOut")
     if cals is not None:
-        result["calories"] = cals
+        result["calories"] = round(cals)
 
     spo2 = stats.get("averageSpo2")
     if spo2 is not None:
