@@ -17,7 +17,12 @@ _ACTIVITY_KEYS = [
     "maxHR",
     "averageSpeed",
     "calories",
+    "trainingEffect",
+    "anaerobicTrainingEffect",
+    "trainingEffectLabel",
 ]
+
+_METERS_PER_MILE = 1609.34
 
 
 def slim_activity(a: dict) -> dict:
@@ -33,9 +38,34 @@ def project_activity(activity: dict) -> dict:
     return slim_activity(activity)
 
 
-def project_activity_list(activities: list[dict]) -> list[dict]:
-    """Slim every activity in a list."""
-    return [slim_activity(a) for a in activities]
+def project_activity_list(activities: list[dict], miles: bool = False) -> list[dict]:
+    """Slim every activity in a list.
+
+    When *miles* is ``True``, each activity dict gains two computed
+    fields: ``distance_mi`` (float, rounded to 2 dp) and
+    ``pace_per_mi`` (``"mm:ss"`` string or ``None`` when there is no
+    distance or duration).
+    """
+    result: list[dict] = []
+    for a in activities:
+        slim = slim_activity(a)
+        if miles:
+            dist_m = a.get("distance")
+            dur_s = a.get("duration")
+            if dist_m is not None and dist_m > 0:
+                slim["distance_mi"] = round(dist_m / _METERS_PER_MILE, 2)
+                if dur_s is not None and dur_s > 0:
+                    pace_sec = dur_s / (dist_m / _METERS_PER_MILE)
+                    mins = int(pace_sec // 60)
+                    secs = int(pace_sec % 60)
+                    slim["pace_per_mi"] = f"{mins}:{secs:02d}"
+                else:
+                    slim["pace_per_mi"] = None
+            else:
+                slim["distance_mi"] = 0.0
+                slim["pace_per_mi"] = None
+        result.append(slim)
+    return result
 
 
 def project_sleep(sleep: dict) -> dict:
@@ -236,16 +266,27 @@ def project_training_status(status: dict) -> dict:
     return result
 
 
+def project_weekly_volume(data: dict) -> dict:
+    """Project a weekly running volume summary dict.
+
+    Keys produced (when source data is available):
+        week_total_mi, previous_week_mi, four_week_avg_mi,
+        run_count, longest_run_mi, total_duration_hours, avg_daily_mi.
+    """
+    return data
+
+
 # ── Generic dispatcher (used by command infrastructure) ────────
 
 
-def project(kind: str, payload: Any) -> Any:
+def project(kind: str, payload: Any, miles: bool = False) -> Any:
     """Dispatch *payload* through the appropriate projection.
 
     When ``state.full`` is ``True`` the raw payload is returned unchanged.
 
     Supported *kind* values:
-        activity, activity_list, sleep, summary, training_status.
+        activity, activity_list, sleep, summary, training_status,
+        weekly_volume.
     All other kinds pass through unchanged (but still respect the
     ``--full`` flag).
     """
@@ -255,13 +296,15 @@ def project(kind: str, payload: Any) -> Any:
     if kind == "activity" and isinstance(payload, dict):
         return project_activity(payload)
     if kind == "activity_list" and isinstance(payload, list):
-        return project_activity_list(payload)
+        return project_activity_list(payload, miles=miles)
     if kind == "sleep" and isinstance(payload, dict):
         return project_sleep(payload)
     if kind == "summary" and isinstance(payload, dict):
         return project_summary(payload)
     if kind == "training_status" and isinstance(payload, dict):
         return project_training_status(payload)
+    if kind == "weekly_volume" and isinstance(payload, dict):
+        return project_weekly_volume(payload)
     # Remaining kinds (heart_rate, steps, body_battery, hrv, stress,
     # weight, readiness, records, progress) pass through raw so
     # projection functions can be added later without touching callers.
