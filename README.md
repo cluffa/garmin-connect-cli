@@ -139,6 +139,7 @@ Provide exactly one source; `UsageError` is raised otherwise.
 |---------|-------------|
 | `activity list` | Recent activities (slim; use `--full` for raw) |
 | `activity list --limit 50 --type running` | Filtered list |
+| `activity list --miles` | List activities with distances in miles and pace per mile |
 | `activity get <id>` | One activity's details (slim) |
 | `activity download <id> --format-file tcx` | Download TCX, GPX, or FIT file |
 | `activity download <id> --format-file gpx --out race.gpx` | Download with custom output path |
@@ -168,6 +169,7 @@ Note: `activity download` uses `--format-file` (values: `tcx`, `gpx`, `fit`) ins
 | `stats readiness [date]` | Training readiness score |
 | `stats records` | Personal records |
 | `stats progress <start> <end>` | Progress summary between two dates |
+| `stats weekly` | Weekly running volume: total miles, previous week, 4-week avg, longest run, run count |
 
 ### `badge` — Badges and challenges
 

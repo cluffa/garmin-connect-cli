@@ -33,6 +33,20 @@ RAW = {
 # ── slim_activity ──────────────────────────────────────────────
 
 
+def test_slim_activity_includes_training_effect_keys():
+    """Training effect fields are part of the slim projection."""
+    raw = {
+        "activityId": 2,
+        "trainingEffect": 3.5,
+        "anaerobicTrainingEffect": 1.2,
+        "trainingEffectLabel": "TEMPO",
+    }
+    slim = slim_activity(raw)
+    assert slim["trainingEffect"] == 3.5
+    assert slim["anaerobicTrainingEffect"] == 1.2
+    assert slim["trainingEffectLabel"] == "TEMPO"
+
+
 def test_slim_activity_drops_noise():
     slim = slim_activity(RAW)
     assert "ownerId" not in slim
@@ -105,6 +119,76 @@ def test_project_activity_list_function():
 
 def test_project_activity_list_empty():
     assert project_activity_list([]) == []
+
+
+# ── project_activity_list ─ with miles ─────────────────────────
+
+
+def test_project_activity_list_miles_computes_distance_and_pace():
+    """Miles mode adds distance_mi and pace_per_mi to each activity."""
+    out = project_activity_list([RAW], miles=True)
+    act = out[0]
+    # 5000 m → 3.10686… mi → rounded to 3.11
+    assert act["distance_mi"] == pytest.approx(3.11, abs=0.01)
+    # 1500 s / 3.10686 mi = 482.78 s/mi → 8:02
+    assert act["pace_per_mi"] == "8:02"
+
+
+def test_project_activity_list_miles_zero_distance():
+    """Zero distance yields distance_mi=0 and pace_per_mi=None."""
+    raw = {"activityId": 3, "distance": 0, "duration": 0}
+    out = project_activity_list([raw], miles=True)
+    assert out[0]["distance_mi"] == 0.0
+    assert out[0]["pace_per_mi"] is None
+
+
+def test_project_activity_list_miles_missing_distance():
+    """Missing distance yields distance_mi=0 and pace_per_mi=None."""
+    raw = {"activityId": 4}
+    out = project_activity_list([raw], miles=True)
+    assert out[0]["distance_mi"] == 0.0
+    assert out[0]["pace_per_mi"] is None
+
+
+def test_project_activity_list_miles_no_duration():
+    """When duration is missing, pace_per_mi is None."""
+    raw = {"activityId": 5, "distance": 1609.34}
+    out = project_activity_list([raw], miles=True)
+    assert out[0]["distance_mi"] == pytest.approx(1.0)
+    assert out[0]["pace_per_mi"] is None
+
+
+def test_project_activity_list_miles_zero_duration():
+    """Zero duration still yields pace_per_mi=None."""
+    raw = {"activityId": 6, "distance": 5000, "duration": 0}
+    out = project_activity_list([raw], miles=True)
+    assert out[0]["distance_mi"] > 0
+    assert out[0]["pace_per_mi"] is None
+
+
+# ── project_weekly_volume ──────────────────────────────────────
+
+
+def test_project_weekly_volume_passthrough():
+    """Weekly volume projection returns the dict unchanged."""
+    data = {
+        "week_total_mi": 25.0,
+        "previous_week_mi": 20.0,
+        "four_week_avg_mi": 22.5,
+        "run_count": 5,
+        "longest_run_mi": 10.0,
+        "total_duration_hours": 3.5,
+        "avg_daily_mi": 3.57,
+    }
+    out = project("weekly_volume", data)
+    assert out == data
+
+
+def test_project_weekly_volume_via_dispatcher():
+    """The project() dispatcher routes weekly_volume correctly."""
+    data = {"week_total_mi": 30.0}
+    out = project("weekly_volume", data)
+    assert out["week_total_mi"] == 30.0
 
 
 # ── project_sleep ──────────────────────────────────────────────

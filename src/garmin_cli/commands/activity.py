@@ -24,10 +24,13 @@ def list_(
     limit: int = typer.Option(20, "--limit"),
     start: int = typer.Option(0, "--start"),
     activity_type: str = typer.Option(None, "--type"),
+    miles: bool = typer.Option(
+        False, "--miles", "-m", help="Show distance in miles and pace per mile."
+    ),
 ):
     """List recent activities (slim by default)."""
     data = client.load_client().get_activities(start, limit, activity_type)
-    return project("activity_list", data)
+    return project("activity_list", data, miles=miles)
 
 
 @activity_app.command()
