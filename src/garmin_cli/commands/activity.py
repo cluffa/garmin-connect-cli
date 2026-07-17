@@ -43,6 +43,14 @@ def get(activity_id: str = typer.Argument(...)):
 
 @activity_app.command()
 @command_output
+def splits(activity_id: str = typer.Argument(...)):
+    """Display lap/split data for an activity."""
+    data = client.load_client().get_activity(activity_id)
+    return project("splits", data)
+
+
+@activity_app.command()
+@command_output
 def download(
     activity_id: str = typer.Argument(...),
     fmt: str = typer.Option("tcx", "--format-file", help="tcx | gpx | fit"),

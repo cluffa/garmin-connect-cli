@@ -12,12 +12,54 @@ runner = CliRunner()
 
 ACT = {"activityId": 1, "activityName": "Run", "distance": 5000.0, "ownerId": 9}
 
+ACT_WITH_SPLITS = {
+    "activityId": 42,
+    "activityName": "Track Workout",
+    "summaryDTO": {
+        "startTimeLocal": "2026-07-16T10:00:00",
+        "distance": 8046.7,
+        "duration": 2700.0,
+        "averageHR": 145,
+        "maxHR": 170,
+    },
+    "splitSummaries": [
+        {
+            "distance": 1609.34,
+            "duration": 540.0,
+            "averageHR": 130,
+            "maxHR": 140,
+            "splitType": "INTERVAL_WARMUP",
+            "averageRunCadence": 155.0,
+        },
+        {
+            "distance": 4828.02,
+            "duration": 1560.0,
+            "averageHR": 160,
+            "maxHR": 173,
+            "splitType": "INTERVAL_ACTIVE",
+            "averageRunCadence": 162.0,
+            "strideLength": 1.24,
+            "verticalOscillation": 9.5,
+        },
+        {
+            "distance": 1609.34,
+            "duration": 600.0,
+            "averageHR": 135,
+            "maxHR": 142,
+            "splitType": "INTERVAL_COOLDOWN",
+            "averageRunCadence": 152.0,
+        },
+    ],
+}
+
 
 class FakeClient:
     def get_activities(self, start=0, limit=20, activitytype=None):
         return [ACT]
 
     def get_activity(self, activity_id):
+        if int(activity_id) == 42:
+            return ACT_WITH_SPLITS
         return ACT
 
     def download_activity(self, activity_id, fmt):
@@ -153,9 +195,77 @@ def test_download_traversal_id_allowed_with_explicit_out(monkeypatch, tmp_path):
 # ── help ──────────────────────────────────────────────────────────────────
 
 
+# ── splits ────────────────────────────────────────────────────────────────
+
+
+def test_splits_projects_correct_keys(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["activity", "splits", "42"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert "splits" in data
+    assert data["activity_name"] == "Track Workout"
+    assert data["total_distance_mi"] == 5.0
+    assert "total_duration_sec" in data
+    assert len(data["splits"]) == 3
+
+    split0 = data["splits"][0]
+    assert "distance_mi" in split0
+    assert "duration_min" in split0
+    assert "pace_per_mi" in split0
+    assert "split_type" in split0
+
+
+def test_splits_split_type_labels(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["activity", "splits", "42"])
+    data = json.loads(result.stdout)["data"]
+    labels = [s["split_type"] for s in data["splits"]]
+    assert labels == ["Warmup", "Interval", "Cooldown"]
+
+
+def test_splits_pace_format(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["activity", "splits", "42"])
+    data = json.loads(result.stdout)["data"]
+    # Warmup: 540s / 60 = 9.0 min, 1609.34m / 1609.34 = 1.0 mi → 9:00/mi
+    assert data["splits"][0]["pace_per_mi"] == "9:00"
+    # Active: 1560s / 60 = 26.0 min, 4828.02m / 1609.34 = 3.0 mi → 8:40/mi
+    assert data["splits"][1]["pace_per_mi"] == "8:40"
+
+
+def test_splits_optional_fields_present(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["activity", "splits", "42"])
+    data = json.loads(result.stdout)["data"]
+    split1 = data["splits"][1]
+    assert split1["stride_length"] == 1.24
+    assert split1["vertical_oscillation"] == 9.5
+    split0 = data["splits"][0]
+    assert "stride_length" not in split0
+
+
+def test_splits_full_returns_raw(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["--full", "activity", "splits", "42"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert data["activityName"] == "Track Workout"
+    assert data["splitSummaries"][0]["splitType"] == "INTERVAL_WARMUP"
+
+
+def test_splits_toon_format(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["--format", "toon", "activity", "splits", "42"])
+    assert result.exit_code == 0
+    assert "Track Workout" in result.stdout
+    assert "Warmup" in result.stdout
+
+
 def test_activity_group_help_shows_commands():
     result = runner.invoke(app, ["activity", "--help"])
     assert result.exit_code == 0
     assert "list" in result.stdout
     assert "get" in result.stdout
     assert "download" in result.stdout
+    assert "splits" in result.stdout
