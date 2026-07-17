@@ -143,6 +143,7 @@ Provide exactly one source; `UsageError` is raised otherwise.
 | `activity get <id>` | One activity's details (slim) |
 | `activity download <id> --format-file tcx` | Download TCX, GPX, or FIT file |
 | `activity download <id> --format-file gpx --out race.gpx` | Download with custom output path |
+| `activity splits <id>` | Display lap/split data with mile paces, HR, and split type labels |
 
 Note: `activity download` uses `--format-file` (values: `tcx`, `gpx`, `fit`) instead of `--format` because
 `--format` is the reserved global `json`/`toon` option. Use `--out <path>` to specify the output file

@@ -216,6 +216,74 @@ def project_summary(stats: dict) -> dict:
     return result
 
 
+_SPLIT_TYPE_LABELS: dict[str, str] = {
+    "INTERVAL_WARMUP": "Warmup",
+    "INTERVAL_ACTIVE": "Interval",
+    "INTERVAL_COOLDOWN": "Cooldown",
+    "INTERVAL_REST": "Rest",
+    "RWD_RUN": "Run",
+    "RWD_WALK": "Walk",
+    "RWD_STAND": "Pause",
+    "RWD_OTHER": "Other",
+}
+
+
+def _format_pace(duration_min: float, distance_mi: float) -> str:
+    """Return pace as mm:ss per mile, or '--' when not meaningful."""
+    if distance_mi <= 0 or duration_min <= 0:
+        return "--"
+    pace = duration_min / distance_mi
+    mins = int(pace)
+    secs = round((pace - mins) * 60)
+    return f"{mins}:{secs:02d}"
+
+
+def project_splits(activity: dict) -> dict:
+    """Project split/lap data from an activity to curated fields."""
+    splits_raw = activity.get("splitSummaries") or []
+    summary = activity.get("summaryDTO") or {}
+
+    splits = []
+    for s in splits_raw:
+        distance_m = s.get("distance") or 0
+        distance_mi = round(distance_m / 1609.34, 2)
+        duration_sec = s.get("duration") or 0
+        duration_min = round(duration_sec / 60)
+        pace_str = _format_pace(duration_min, distance_mi)
+        split_type_raw = s.get("splitType", "")
+        split_type = _SPLIT_TYPE_LABELS.get(split_type_raw, split_type_raw)
+
+        entry: dict[str, Any] = {
+            "distance_mi": distance_mi,
+            "duration_min": duration_min,
+            "pace_per_mi": pace_str,
+            "split_type": split_type,
+        }
+
+        for src, dest in [
+            ("averageHR", "avg_hr"),
+            ("maxHR", "max_hr"),
+            ("averageRunCadence", "cadence"),
+            ("strideLength", "stride_length"),
+            ("verticalOscillation", "vertical_oscillation"),
+        ]:
+            if src in s and s[src] is not None:
+                entry[dest] = s[src]
+
+        splits.append(entry)
+
+    total_distance_m = summary.get("distance") or 0
+    total_distance_mi = round(total_distance_m / 1609.34, 2)
+
+    return {
+        "activity_name": activity.get("activityName"),
+        "date": summary.get("startTimeLocal"),
+        "total_distance_mi": total_distance_mi,
+        "total_duration_sec": summary.get("duration"),
+        "splits": splits,
+    }
+
+
 def project_training_status(status: dict) -> dict:
     """Project training status data to a curated summary.
 
@@ -303,6 +371,8 @@ def project(kind: str, payload: Any, miles: bool = False) -> Any:
         return project_summary(payload)
     if kind == "training_status" and isinstance(payload, dict):
         return project_training_status(payload)
+    if kind == "splits" and isinstance(payload, dict):
+        return project_splits(payload)
     if kind == "weekly_volume" and isinstance(payload, dict):
         return project_weekly_volume(payload)
     # Remaining kinds (heart_rate, steps, body_battery, hrv, stress,
