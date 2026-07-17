@@ -58,6 +58,24 @@ def test_list_with_start(monkeypatch):
     assert json.loads(result.stdout)["ok"] is True
 
 
+def test_list_miles_adds_pace_and_distance_mi(monkeypatch):
+    """--miles computes distance_mi and pace_per_mi in slim projection."""
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["activity", "list", "--miles"])
+    data = json.loads(result.stdout)["data"]
+    assert "distance_mi" in data[0]
+    assert "pace_per_mi" in data[0]
+
+
+def test_list_miles_short_flag(monkeypatch):
+    """-m is a valid short alias for --miles."""
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["activity", "list", "-m"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert "distance_mi" in data[0]
+
+
 # ── get ───────────────────────────────────────────────────────────────────
 
 
