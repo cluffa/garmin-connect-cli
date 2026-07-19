@@ -37,6 +37,86 @@ class InternalError(CliError):
     exit_code = 1
 
 
+def _human_dict(data: dict) -> str:
+    """Render a flat dict as labeled key: value pairs."""
+    lines: list[str] = []
+    for k, v in data.items():
+        if isinstance(v, dict):
+            continue  # skip nested, let toon handle those
+        if isinstance(v, list):
+            continue
+        label = k.replace("_", " ").replace("  ", " ").title()
+        if isinstance(v, float):
+            v = f"{v:.1f}" if v != int(v) else int(v)
+        lines.append(f"  {label}: {v}")
+    return "\n".join(lines)
+
+
+def _human_list(items: list) -> str:
+    """Render a list of dicts as an aligned table."""
+    if not items:
+        return "  (empty)"
+
+    first = items[0]
+    if not isinstance(first, dict):
+        return "\n".join(f"  {i+1}. {v}" for i, v in enumerate(items))
+
+    # Fields to exclude
+    skip = {"activityType", "activityId", "userProfileId"}
+
+    # Pick columns — use the first item's keys (after filtering)
+    cols = [k for k in first if k not in skip and not isinstance(first[k], (dict, list))]
+
+    # Prettify column headers
+    label_overrides = {
+        "activityName": "Activity",
+        "startTimeLocal": "Start",
+        "pace_per_mi": "Pace",
+        "distance_mi": "Dist",
+        "averageHR": "HR",
+        "maxHR": "MaxHR",
+        "averageSpeed": "Speed",
+        "trainingEffectLabel": "TE",
+        "anaerobicTrainingEffect": "Anaerobic",
+        "duration": "Duration (s)",
+    }
+
+    def col_label(c: str) -> str:
+        return label_overrides.get(c, c.replace("_", " ").title())
+
+    # Measure columns using labels
+    col_widths = {c: len(col_label(c)) for c in cols}
+
+    def fmt(v):
+        if v is None:
+            return "--"
+        if isinstance(v, bool):
+            return "✓" if v else ""
+        if isinstance(v, float):
+            return f"{v:.1f}" if abs(v - round(v, 1)) > 0.0001 else str(int(v))
+        return str(v)
+
+    # Widen columns to fit data
+    for item in items:
+        for c in cols:
+            w = len(fmt(item.get(c)))
+            if w > col_widths.get(c, 0):
+                col_widths[c] = w
+
+    # Cap width so tables don't get absurdly wide
+    col_widths = {c: min(w, 30) for c, w in col_widths.items()}
+
+    sep = "  "
+    hdr = sep.join(f"{col_label(c):>{col_widths[c]}}" for c in cols)
+    ruler = "─" * len(hdr)
+    rows = []
+    for item in items:
+        row = sep.join(f"{fmt(item.get(c)):>{col_widths[c]}}" for c in cols)
+        rows.append(row)
+
+    return "\n".join([hdr, ruler] + rows)
+
+
 def _human_splits(data: dict) -> str:
     """Render splits data as a human-readable table."""
     laps = data.get("splits") or []
@@ -151,7 +231,10 @@ def render(envelope: dict) -> str:
         data = envelope.get("data")
         if isinstance(data, dict) and "splits" in data and "lap_count" in data:
             return _human_splits(data)
-        # Fall back to toon for non-splits data
+        if isinstance(data, dict):
+            return _human_dict(data)
+        if isinstance(data, list):
+            return _human_list(data)
         return toon.encode(envelope)
     return json.dumps(envelope, separators=(",", ":"), default=str)
 
