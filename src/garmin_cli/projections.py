@@ -238,49 +238,80 @@ def _format_pace(duration_min: float, distance_mi: float) -> str:
     return f"{mins}:{secs:02d}"
 
 
-def project_splits(activity: dict) -> dict:
-    """Project split/lap data from an activity to curated fields."""
-    splits_raw = activity.get("splitSummaries") or []
-    summary = activity.get("summaryDTO") or {}
+def _lap_intensity_label(raw: str) -> str:
+    """Map lap intensityType to a human label."""
+    labels = {
+        "INTERVAL": "Interval",
+        "ACTIVE": "Active",
+        "REST": "Rest",
+        "WARMUP": "Warmup",
+        "COOLDOWN": "Cooldown",
+        "RECOVERY": "Recovery",
+    }
+    return labels.get(raw, raw)
 
-    splits = []
-    for s in splits_raw:
+
+def project_splits(activity: dict) -> dict:
+    """Project per-lap data from ``get_activity_splits()`` to curated fields.
+
+    Expects the ``lapDTOs`` payload returned by the Garmin Connect
+    ``/splits`` endpoint (rich per-lap data with cadence, power,
+    stride, ground contact time, etc.).
+    """
+    laps_raw: list[dict] = activity.get("lapDTOs") or []
+
+    laps = []
+    total_mi = 0.0
+    total_dur_s = 0.0
+    for s in laps_raw:
         distance_m = s.get("distance") or 0
         distance_mi = round(distance_m / 1609.34, 2)
         duration_sec = s.get("duration") or 0
-        duration_min = round(duration_sec / 60)
+        duration_min = round(duration_sec / 60, 1)
         pace_str = _format_pace(duration_min, distance_mi)
-        split_type_raw = s.get("splitType", "")
-        split_type = _SPLIT_TYPE_LABELS.get(split_type_raw, split_type_raw)
+
+        total_mi += distance_mi
+        total_dur_s += duration_sec
+
+        intensity = _lap_intensity_label(s.get("intensityType", ""))
 
         entry: dict[str, Any] = {
             "distance_mi": distance_mi,
             "duration_min": duration_min,
             "pace_per_mi": pace_str,
-            "split_type": split_type,
+            "lap_type": intensity,
         }
 
+        # Remap Garmin API field names to stable output keys
         for src, dest in [
             ("averageHR", "avg_hr"),
             ("maxHR", "max_hr"),
             ("averageRunCadence", "cadence"),
             ("strideLength", "stride_length"),
             ("verticalOscillation", "vertical_oscillation"),
+            ("averagePower", "avg_power"),
+            ("normalizedPower", "normalized_power"),
+            ("groundContactTime", "ground_contact_ms"),
+            ("calories", "calories"),
+            ("movingDuration", "moving_duration_s"),
         ]:
-            if src in s and s[src] is not None:
-                entry[dest] = s[src]
+            val = s.get(src)
+            if val is not None:
+                entry[dest] = val if dest != "cadence" else round(val)
+            else:
+                entry[dest] = None
 
-        splits.append(entry)
+        laps.append(entry)
 
-    total_distance_m = summary.get("distance") or 0
-    total_distance_mi = round(total_distance_m / 1609.34, 2)
+    # Date comes from the first lap's startTimeGMT if available
+    date = laps_raw[0].get("startTimeGMT") if laps_raw else None
 
     return {
-        "activity_name": activity.get("activityName"),
-        "date": summary.get("startTimeLocal"),
-        "total_distance_mi": total_distance_mi,
-        "total_duration_sec": summary.get("duration"),
-        "splits": splits,
+        "date": date,
+        "total_distance_mi": round(total_mi, 2),
+        "total_duration_sec": round(total_dur_s, 1),
+        "lap_count": len(laps),
+        "splits": laps,
     }
 
 
