@@ -44,8 +44,9 @@ def get(activity_id: str = typer.Argument(...)):
 @activity_app.command()
 @command_output
 def splits(activity_id: str = typer.Argument(...)):
-    """Display lap/split data for an activity."""
-    data = client.load_client().get_activity(activity_id)
+    """Display lap/split data for an activity. Uses the per-lap API endpoint for rich lap-level data (cadence, stride, power, HR)."""
+    gc = client.load_client()
+    data = gc.get_activity_splits(activity_id)
     return project("splits", data)
 
 
