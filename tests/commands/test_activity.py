@@ -53,6 +53,53 @@ ACT_WITH_SPLITS = {
 }
 
 
+LAP_DTOS = [
+    {
+        "distance": 1609.34,
+        "duration": 540.0,
+        "movingDuration": 538.0,
+        "averageHR": 130.0,
+        "maxHR": 140.0,
+        "averageRunCadence": 155.0,
+        "intensityType": "WARMUP",
+        "calories": 120.0,
+        "strideLength": 1.05,
+        "verticalOscillation": 8.5,
+        "averagePower": 320.0,
+        "normalizedPower": 325.0,
+        "groundContactTime": 290.0,
+        "startTimeGMT": "2026-07-16T14:00:00.0",
+    },
+    {
+        "distance": 4828.02,
+        "duration": 1560.0,
+        "movingDuration": 1550.0,
+        "averageHR": 160.0,
+        "maxHR": 173.0,
+        "averageRunCadence": 162.0,
+        "intensityType": "ACTIVE",
+        "calories": 350.0,
+        "strideLength": 1.24,
+        "verticalOscillation": 9.5,
+        "averagePower": 350.0,
+        "normalizedPower": 358.0,
+        "groundContactTime": 285.0,
+        "startTimeGMT": "2026-07-16T14:10:00.0",
+    },
+    {
+        "distance": 1609.34,
+        "duration": 600.0,
+        "movingDuration": 592.0,
+        "averageHR": 135.0,
+        "maxHR": 142.0,
+        "averageRunCadence": 152.0,
+        "intensityType": "COOLDOWN",
+        "calories": 100.0,
+        "startTimeGMT": "2026-07-16T14:36:00.0",
+    },
+]
+
+
 class FakeClient:
     def get_activities(self, start=0, limit=20, activitytype=None):
         return [ACT]
@@ -61,6 +108,9 @@ class FakeClient:
         if int(activity_id) == 42:
             return ACT_WITH_SPLITS
         return ACT
+
+    def get_activity_splits(self, activity_id):
+        return {"activityId": int(activity_id), "lapDTOs": LAP_DTOS}
 
     def download_activity(self, activity_id, fmt):
         return b"fake-garmin-data"
@@ -204,24 +254,24 @@ def test_splits_projects_correct_keys(monkeypatch):
     assert result.exit_code == 0
     data = json.loads(result.stdout)["data"]
     assert "splits" in data
-    assert data["activity_name"] == "Track Workout"
     assert data["total_distance_mi"] == 5.0
     assert "total_duration_sec" in data
+    assert data["lap_count"] == 3
     assert len(data["splits"]) == 3
 
     split0 = data["splits"][0]
     assert "distance_mi" in split0
     assert "duration_min" in split0
     assert "pace_per_mi" in split0
-    assert "split_type" in split0
+    assert "lap_type" in split0
 
 
 def test_splits_split_type_labels(monkeypatch):
     monkeypatch.setattr(client, "load_client", lambda: FakeClient())
     result = runner.invoke(app, ["activity", "splits", "42"])
     data = json.loads(result.stdout)["data"]
-    labels = [s["split_type"] for s in data["splits"]]
-    assert labels == ["Warmup", "Interval", "Cooldown"]
+    labels = [s["lap_type"] for s in data["splits"]]
+    assert labels == ["Warmup", "Active", "Cooldown"]
 
 
 def test_splits_pace_format(monkeypatch):
@@ -241,8 +291,10 @@ def test_splits_optional_fields_present(monkeypatch):
     split1 = data["splits"][1]
     assert split1["stride_length"] == 1.24
     assert split1["vertical_oscillation"] == 9.5
+    assert split1["avg_power"] == 350.0
+    assert split1["normalized_power"] == 358.0
     split0 = data["splits"][0]
-    assert "stride_length" not in split0
+    assert "stride_length" in split0  # LAP_DTOS[0] has strideLength
 
 
 def test_splits_full_returns_raw(monkeypatch):
@@ -250,16 +302,17 @@ def test_splits_full_returns_raw(monkeypatch):
     result = runner.invoke(app, ["--full", "activity", "splits", "42"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)["data"]
-    assert data["activityName"] == "Track Workout"
-    assert data["splitSummaries"][0]["splitType"] == "INTERVAL_WARMUP"
+    assert data["activityId"] == 42
+    assert data["lapDTOs"][0]["intensityType"] == "WARMUP"
 
 
 def test_splits_toon_format(monkeypatch):
     monkeypatch.setattr(client, "load_client", lambda: FakeClient())
     result = runner.invoke(app, ["--format", "toon", "activity", "splits", "42"])
     assert result.exit_code == 0
-    assert "Track Workout" in result.stdout
     assert "Warmup" in result.stdout
+    assert "Active" in result.stdout
+    assert "Cooldown" in result.stdout
 
 
 def test_activity_group_help_shows_commands():
