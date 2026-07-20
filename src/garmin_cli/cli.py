@@ -18,12 +18,12 @@ app = typer.Typer(
 
 @app.callback()
 def main(
-    fmt: str = typer.Option("json", "--format", help="Output format: json, json-pretty, toon, or human."),
+    fmt: str = typer.Option("json", "--format", help="Output format: json, json-pretty, or toon."),
     full: bool = typer.Option(False, "--full", help="Return full raw payloads."),
 ) -> None:
     """Global options applied to every command."""
-    if fmt not in ("json", "json-pretty", "toon", "human"):
-        raise typer.BadParameter("format must be 'json', 'json-pretty', 'toon', or 'human'")
+    if fmt not in ("json", "json-pretty", "toon"):
+        raise typer.BadParameter("format must be 'json', 'json-pretty', or 'toon'")
     state.fmt = fmt
     state.full = full
 
