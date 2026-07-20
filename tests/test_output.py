@@ -17,6 +17,13 @@ def test_render_json_compact():
     assert out == '{"ok":true,"data":{"a":1}}'
 
 
+def test_render_json_pretty():
+    state.fmt = "json-pretty"
+    out = render({"ok": True, "data": {"a": 1}})
+    # json-pretty uses indented JSON
+    assert out == '{\n  "ok": true,\n  "data": {\n    "a": 1\n  }\n}'
+
+
 def test_render_toon_uses_toon(monkeypatch):
     state.fmt = "toon"
     out = render({"ok": True, "data": {"rows": [{"x": 1}, {"x": 2}]}})
