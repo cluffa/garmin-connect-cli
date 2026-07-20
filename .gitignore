@@ -217,3 +217,12 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .worktrees/
+
+# macOS
+.DS_Store
+
+# Downloaded activity artifacts (personal data — never commit)
+activity_*.json
+activity_*.tcx
+activity_*.gpx
+activity_*.fit
