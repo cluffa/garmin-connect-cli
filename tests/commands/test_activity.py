@@ -315,6 +315,22 @@ def test_splits_toon_format(monkeypatch):
     assert "Cooldown" in result.stdout
 
 
+def test_splits_human_format(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["--format", "human", "activity", "splits", "42"])
+    assert result.exit_code == 0
+    assert "5.00 mi" in result.stdout
+    assert "9:00/mi" in result.stdout
+    assert "Lap" in result.stdout
+    assert "Dist" in result.stdout
+    assert "Pace" in result.stdout
+    assert "HR" in result.stdout
+    assert "Stride" in result.stdout
+    assert "GCT" in result.stdout
+    assert "Power" in result.stdout
+    assert "Cal" in result.stdout
+
+
 def test_activity_group_help_shows_commands():
     result = runner.invoke(app, ["activity", "--help"])
     assert result.exit_code == 0
