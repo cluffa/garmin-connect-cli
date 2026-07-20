@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import io
+import json
 import re
 import sys
+import zipfile
 
 import typer
+from garmin_fit_sdk import Decoder, Stream
 from garminconnect import Garmin
 
 from garmin_cli import client
@@ -16,6 +20,7 @@ _FORMATS = {
     "tcx": Garmin.ActivityDownloadFormat.TCX,
     "gpx": Garmin.ActivityDownloadFormat.GPX,
     "fit": Garmin.ActivityDownloadFormat.ORIGINAL,
+    "json": None,  # sentinel — handled locally, not a Garmin API format
 }
 
 
@@ -55,12 +60,31 @@ def splits(activity_id: str = typer.Argument(...)):
 @command_output
 def download(
     activity_id: str = typer.Argument(...),
-    fmt: str = typer.Option("tcx", "--format-file", help="tcx | gpx | fit"),
+    fmt: str = typer.Option("tcx", "--format-file", help="tcx | gpx | fit | json"),
     out: str = typer.Option(None, "--out", help="Output file path. Use '-' for stdout."),
 ):
     """Download an activity file."""
     if fmt not in _FORMATS:
-        raise UsageError("format must be tcx, gpx, or fit")
+        raise UsageError("format must be tcx, gpx, fit, or json")
+    if fmt == "json":
+        # Download FIT, parse with official Garmin SDK, return structured JSON
+        raw = client.load_client().download_activity(
+            activity_id, Garmin.ActivityDownloadFormat.ORIGINAL
+        )
+        z = zipfile.ZipFile(io.BytesIO(raw))
+        fit_bytes = z.read(z.namelist()[0])
+        decoder = Decoder(Stream.from_bytes_io(io.BytesIO(fit_bytes)))
+        messages, _errors = decoder.read()
+        payload = json.dumps(messages, indent=2, default=str)
+
+        if out == "-":
+            sys.stdout.write(payload)
+            raise SystemExit(0)
+
+        path = out or f"activity_{activity_id}.json"
+        with open(path, "w") as fh:
+            fh.write(payload)
+        return {"path": path, "bytes": len(payload)}
     if out is None and not re.fullmatch(r"[A-Za-z0-9_-]+", activity_id):
         raise UsageError(
             "activity_id must be alphanumeric to derive a filename; "
