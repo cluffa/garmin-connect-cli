@@ -24,15 +24,16 @@ _FORMATS = {
 }
 
 # Community-reverse-engineered names for undocumented Garmin FIT message types.
-# Sources: Intervals.icu forum, HarryOnline FIT File Viewer, Runalyze.
+# Primary source: fit4ruby GlobalFitMessages.rb (Chris Schlaeger, GPLv2).
+# Supplemented by: Intervals.icu forum, HarryOnline FIT File Viewer, Runalyze.
 _FIT_MESSAGE_NAMES: dict[int, str] = {
-    22: "sensor_config",
-    79: "alt_vo2max",
-    104: "device_aux_info",
-    113: "device_aux_info_2",
-    140: "firstbeat_metrics",
-    141: "activity_meta",
-    147: "hrm_device_info",
+    22: "data_sources",
+    79: "user_data",
+    104: "battery",
+    113: "personal_records",
+    140: "physiological_metrics",
+    141: "epo_data",
+    147: "sensor_settings",
     233: "sensor_data",
     288: "segment_info",
     325: "developer_data_1",
@@ -49,16 +50,48 @@ _FIT_MESSAGE_NAMES: dict[int, str] = {
 
 # Known field name overrides for undocumented message types.
 # Key: (mesg_num, field_num), Value: human-readable field name.
+# Sources: fit4ruby GlobalFitMessages.rb, Intervals.icu community.
 _FIT_FIELD_NAMES: dict[tuple[int, int], str] = {
-    # firstbeat_metrics (140) — https://forum.intervals.icu/t/all-fields-from-garmin-activity/28097
-    (140, 1): "new_hr_max",
-    (140, 4): "aerobic_training_load",
-    (140, 7): "vo2max_metmax",  # × 3.5 ÷ 65536 for ml/kg/min
-    (140, 9): "recovery_time_min",
-    (140, 14): "lactate_threshold_hr",
-    (140, 15): "lactate_threshold_pace_ms",
+    # user_data (79) — pre-activity physiological profile
+    (79, 0): "metmax",  # scale:1024, unit:MET → VO₂max = value × 3.5 ÷ 1024
+    (79, 1): "age",
+    (79, 2): "height",  # scale:100, m
+    (79, 3): "weight",  # scale:10, kg
+    (79, 4): "gender",
+    (79, 5): "activity_class",  # scale:10
+    (79, 6): "max_hr",
+    (79, 8): "recovery_time",  # scale:60, hours
+    (79, 10): "avg_resting_heart_rate",
+    (79, 11): "running_lactate_threshold_heart_rate",
+    (79, 12): "functional_threshold_power",
+    (79, 13): "functional_threshold_speed",  # scale:36, m/s
+    # battery (104) — per-device battery readings
+    (104, 0): "unit_voltage",  # scale:1000, V
+    (104, 2): "percent",  # %
+    (104, 3): "current",  # mA (guessed)
+    # personal_records (113) — best-effort records
+    (113, 0): "longest_distance",
+    (113, 1): "sport",
+    (113, 2): "distance",  # scale:100, m
+    (113, 3): "duration",  # scale:1000, ms
+    (113, 4): "start_time",  # date_time
+    (113, 5): "new_record",
+    # physiological_metrics (140) — post-activity Firstbeat metrics
+    (140, 0): "min_heart_rate",
+    (140, 1): "max_heart_rate",
+    (140, 4): "aerobic_training_effect",  # scale:10
+    (140, 7): "metmax",  # scale:65536, unit:MET → VO₂max = value × 3.5 ÷ 65536
+    (140, 9): "recovery_time",  # scale:60, hours
+    (140, 14): "running_lactate_threshold_heart_rate",
+    (140, 16): "running_lactate_threshold_speed",  # scale:36, m/s
     (140, 17): "performance_condition",
-    (140, 20): "anaerobic_training_load",
+    (140, 20): "anaerobic_training_effect",  # scale:10
+    (140, 29): "metmax_running",  # scale:65536, unit:MET — alternative VO₂max
+    # sensor_settings (147) — connected sensor configuration
+    (147, 0): "ant_id",
+    (147, 2): "name",
+    (147, 11): "calibration_factor",  # scale:10
+    (147, 21): "wheel_size",  # mm
 }
 
 
