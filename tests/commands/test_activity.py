@@ -3,6 +3,7 @@
 import json
 import os
 
+from garmin_fit_sdk import Decoder, Stream
 from typer.testing import CliRunner
 
 from garmin_cli import client
@@ -213,15 +214,38 @@ def test_download_with_out(monkeypatch, tmp_path):
     assert os.path.isfile("custom.gpx")
 
 
-def test_download_stdout_dash(monkeypatch):
-    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
-    result = runner.invoke(app, [
-        "activity", "download", "1", "--format-file", "tcx", "--out", "-",
-    ])
+def test_download_json_format(monkeypatch, tmp_path):
+    """--format-file json parses FIT and returns structured JSON."""
+    import io as _io, zipfile as _zipfile
+
+    # Minimal valid zip containing a dummy file
+    buf = _io.BytesIO()
+    with _zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("activity.fit", b"\x0e\x10" + b"\x00" * 12)
+    zip_data = buf.getvalue()
+
+    class JsonFakeClient(FakeClient):
+        def download_activity(self, activity_id, fmt):
+            return zip_data
+
+    monkeypatch.setattr(client, "load_client", lambda: JsonFakeClient())
+    monkeypatch.chdir(tmp_path)
+
+    # Mock Decoder.read to return known parsed data
+    fake_messages = {"record_mesgs": [{"timestamp": 0, "heart_rate": 140}]}
+    orig_read = Decoder.read
+    monkeypatch.setattr(Decoder, "read", lambda s: (fake_messages, []))
+
+    result = runner.invoke(app, ["activity", "download", "1", "--format-file", "json"])
     assert result.exit_code == 0
-    assert result.stdout == "fake-garmin-data"
-    # No JSON envelope — raw bytes only
-    assert not result.stdout.startswith("{")
+    data = json.loads(result.stdout)["data"]
+    assert data["bytes"] > 0
+    assert os.path.isfile("activity_1.json")
+    with open("activity_1.json") as fh:
+        parsed = json.load(fh)
+    assert parsed["record_mesgs"][0]["heart_rate"] == 140
+
+
 
 
 def test_download_invalid_format(monkeypatch):
