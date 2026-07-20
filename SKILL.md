@@ -1,5 +1,6 @@
 ---
 name: garmin-connect
+version: 0.1.0
 description: >
   Use this skill whenever the user asks about Garmin Connect data — retrieving
   activities, health metrics, sleep, steps, heart rate, body battery, HRV,
