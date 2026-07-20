@@ -7,7 +7,7 @@ pipelines, or other tools — without screen-scraping or fragile text parsing.
 - JSON envelope: `{"ok":true,"data":...}` or `{"ok":false,"error":{...}}`
 - Meaningful exit codes (0 = success, 1 = internal error, 2 = usage, 3 = auth,
   4 = API/failure)
-- TOON output available with `--format toon` for human-friendly tables
+- TOON output available with `--format toon` for human-friendly tables; `--format json-pretty` for indented JSON
 - Unified date-spec across all commands (`today`, `yesterday`, `-7d`, `+7d`,
   `start:end`, `YYYY-MM-DD`, `YYYY-MM-DD:YYYY-MM-DD`)
 - Optional `--full` flag to return raw Garmin API payloads instead of slim
@@ -42,7 +42,7 @@ so a single login works for both tools. The store is resolved in this order:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--format` | `json` | Output format: `json` (compact) or `toon` (tabular/YAML) |
+| `--format` | `json` | Output format: `json` (compact), `json-pretty` (indented), or `toon` (tabular) |
 | `--full` | — | Return raw Garmin API payloads instead of slim projections |
 
 Place global options **before** the sub-command:
@@ -146,7 +146,7 @@ Provide exactly one source; `UsageError` is raised otherwise.
 | `activity splits <id>` | Display lap/split data with mile paces, HR, and split type labels |
 
 Note: `activity download` uses `--format-file` (values: `tcx`, `gpx`, `fit`) instead of `--format` because
-`--format` is the reserved global `json`/`toon` option. Use `--out <path>` to specify the output file
+`--format` is the reserved global `json`/`json-pretty`/`toon` option. Use `--out <path>` to specify the output file
 (defaults to `<id>.<format>` in the working directory).
 
 ### `health` — Health/wellness data
@@ -219,6 +219,27 @@ Error envelopes use stderr and non-zero exit codes:
 
 ```json
 {"ok":false,"error":{"type":"auth","message":"no cached token"}}
+```
+
+### JSON-Pretty
+
+Pass `--format json-pretty` for indented, human-readable JSON:
+
+```bash
+uv run garmin --format json-pretty activity list
+```
+
+```json
+{
+  "ok": true,
+  "data": [
+    {
+      "activityName": "Morning Run",
+      "startTimeLocal": "2026-07-20 07:30:00",
+      "duration": 1800.0
+    }
+  ]
+}
 ```
 
 ### TOON
