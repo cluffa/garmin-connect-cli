@@ -213,6 +213,17 @@ def test_download_with_out(monkeypatch, tmp_path):
     assert os.path.isfile("custom.gpx")
 
 
+def test_download_stdout_dash(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, [
+        "activity", "download", "1", "--format-file", "tcx", "--out", "-",
+    ])
+    assert result.exit_code == 0
+    assert result.stdout == "fake-garmin-data"
+    # No JSON envelope — raw bytes only
+    assert not result.stdout.startswith("{")
+
+
 def test_download_invalid_format(monkeypatch):
     monkeypatch.setattr(client, "load_client", lambda: FakeClient())
     result = runner.invoke(app, ["activity", "download", "1", "--format-file", "csv"])

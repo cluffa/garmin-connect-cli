@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import sys
 
 import typer
 from garminconnect import Garmin
@@ -55,7 +56,7 @@ def splits(activity_id: str = typer.Argument(...)):
 def download(
     activity_id: str = typer.Argument(...),
     fmt: str = typer.Option("tcx", "--format-file", help="tcx | gpx | fit"),
-    out: str = typer.Option(None, "--out", help="Output file path."),
+    out: str = typer.Option(None, "--out", help="Output file path. Use '-' for stdout."),
 ):
     """Download an activity file."""
     if fmt not in _FORMATS:
@@ -66,6 +67,11 @@ def download(
             "pass --out to choose an explicit path"
         )
     data = client.load_client().download_activity(activity_id, _FORMATS[fmt])
+
+    if out == "-":
+        sys.stdout.buffer.write(data)
+        raise SystemExit(0)
+
     path = out or f"activity_{activity_id}.{fmt}"
     with open(path, "wb") as fh:
         fh.write(data)
