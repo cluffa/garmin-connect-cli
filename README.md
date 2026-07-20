@@ -12,6 +12,8 @@ pipelines, or other tools — without screen-scraping or fragile text parsing.
   `start:end`, `YYYY-MM-DD`, `YYYY-MM-DD:YYYY-MM-DD`)
 - Optional `--full` flag to return raw Garmin API payloads instead of slim
   projections
+- [Claude Code skill](https://github.com/cluffa/garmin-connect-skill) —
+  teaches AI agents how to use this CLI
 
 ## Setup
 
