@@ -22,29 +22,54 @@ screen-scraping needed.
 **Repo:** `github.com/cluffa/garmin-connect-cli`
 **Skill repo:** `github.com/cluffa/garmin-connect-skill`
 
+## Install
+
+The CLI is not on PyPI — install it from GitHub with `uv`:
+
+```bash
+uv tool install git+https://github.com/cluffa/garmin-connect-cli
+```
+
+This exposes a `garmin` executable on your PATH (via `~/.local/bin`), so you
+can run it from any directory. Pin a branch or tag by appending `@ref`, e.g.
+`...garmin-connect-cli@main`.
+
+Upgrade or reinstall later:
+
+```bash
+uv tool upgrade garmin-cli                                    # pull latest
+uv tool install --reinstall git+https://github.com/cluffa/garmin-connect-cli
+```
+
+If `garmin` isn't found after install, ensure uv's bin dir is on PATH with
+`uv tool update-shell` (then restart the shell).
+
 ## Setup
 
 ```bash
 export GARMIN_EMAIL=you@example.com
 export GARMIN_PASSWORD=your-password
-uv run garmin auth login  # prompts for MFA if enabled; caches token
+garmin auth login  # prompts for MFA if enabled; caches token
 ```
 
 The CLI shares its token store with the
 [Garmin Workout Pipeline MCP server](https://github.com/cluffa/Garmin-Workout-Pipeline),
-so a single `auth login` works for both tools.
+so a single `auth login` works for both tools. The token is cached under the
+home directory, so it persists across CLI upgrades and reinstalls.
 
 If the user hasn't authenticated yet, walk them through `auth login` first
 before running data commands. Check auth status with `auth status`.
 
 ## Invocation
 
-All commands are run from the CLI repo root:
+Once installed, run `garmin` directly from any directory:
 
 ```bash
-cd /path/to/garmin-connect-cli
-uv run garmin [global options] <command> [args]
+garmin [global options] <command> [args]
 ```
+
+(If you're working from a source checkout instead of an installed tool, run the
+same commands as `uv run garmin ...` from the CLI repo root.)
 
 ## Global Options
 
@@ -58,8 +83,8 @@ uv run garmin [global options] <command> [args]
 Global options go **before** the sub-command:
 
 ```bash
-uv run garmin --format json-pretty activity list
-uv run garmin --full stats summary today
+garmin --format json-pretty activity list
+garmin --full stats summary today
 ```
 
 ## Agent-First Patterns
@@ -67,7 +92,7 @@ uv run garmin --full stats summary today
 ### Always check the envelope
 
 ```bash
-result=$(uv run garmin activity list 2>&1)
+result=$(garmin activity list 2>&1)
 exit_code=$?
 ```
 
@@ -89,7 +114,7 @@ Every command returns JSON on stdout (or stderr for errors). Use `jq` to
 extract what you need:
 
 ```bash
-uv run garmin activity list | jq '.data[:3] | .[] | {name: .activityName, date: .startTimeLocal}'
+garmin activity list | jq '.data[:3] | .[] | {name: .activityName, date: .startTimeLocal}'
 ```
 
 ### Use json-pretty for human display
@@ -97,7 +122,7 @@ uv run garmin activity list | jq '.data[:3] | .[] | {name: .activityName, date: 
 When showing data to the user, prefer `--format json-pretty`:
 
 ```bash
-uv run garmin --format json-pretty activity get 12345
+garmin --format json-pretty activity get 12345
 ```
 
 ### Streaming binary/JSON to stdout
@@ -106,10 +131,10 @@ For `activity download`, use `--out -` to stream raw data to stdout:
 
 ```bash
 # Stream TCX to a pipe
-uv run garmin activity download 123 --format-file tcx --out - | gzip > activity.tcx.gz
+garmin activity download 123 --format-file tcx --out - | gzip > activity.tcx.gz
 
 # Stream parsed JSON to jq
-uv run garmin activity download 123 --format-file json --out - | jq '.record_mesgs[:10]'
+garmin activity download 123 --format-file json --out - | jq '.record_mesgs[:10]'
 ```
 
 ## Date Specifications
@@ -131,39 +156,39 @@ All date parameters accept these formats:
 ### `auth` — Authentication
 
 ```bash
-uv run garmin auth login      # Authenticate (prompts for MFA)
-uv run garmin auth status     # Check if token is valid
-uv run garmin auth logout     # Delete cached token
+garmin auth login      # Authenticate (prompts for MFA)
+garmin auth status     # Check if token is valid
+garmin auth logout     # Delete cached token
 ```
 
 ### `activity` — Retrieve Activities
 
 ```bash
 # List recent activities (slim projection by default)
-uv run garmin activity list
-uv run garmin activity list --limit 10
-uv run garmin activity list --type running
-uv run garmin activity list --miles          # distances in miles, pace/mi
-uv run garmin --full activity list           # raw API payload
+garmin activity list
+garmin activity list --limit 10
+garmin activity list --type running
+garmin activity list --miles          # distances in miles, pace/mi
+garmin --full activity list           # raw API payload
 
 # Get one activity's details
-uv run garmin activity get <activity_id>
-uv run garmin --full activity get <activity_id>
+garmin activity get <activity_id>
+garmin --full activity get <activity_id>
 
 # Lap/split data with mile paces, HR, cadence, stride, power
-uv run garmin activity splits <activity_id>
+garmin activity splits <activity_id>
 
 # Download activity file (binary formats)
-uv run garmin activity download <id> --format-file tcx
-uv run garmin activity download <id> --format-file gpx --out run.gpx
-uv run garmin activity download <id> --format-file fit
+garmin activity download <id> --format-file tcx
+garmin activity download <id> --format-file gpx --out run.gpx
+garmin activity download <id> --format-file fit
 
 # Download and parse FIT to structured JSON (uses official Garmin FIT SDK)
-uv run garmin activity download <id> --format-file json
-uv run garmin activity download <id> --format-file json --out - | jq '.record_mesgs[0]'
+garmin activity download <id> --format-file json
+garmin activity download <id> --format-file json --out - | jq '.record_mesgs[0]'
 
 # Stream any format to stdout
-uv run garmin activity download <id> --format-file tcx --out - | head
+garmin activity download <id> --format-file tcx --out - | head
 ```
 
 **JSON format details:** `--format-file json` downloads the raw FIT file,
@@ -177,56 +202,56 @@ names where known (fit4ruby/Intervals.icu sources).
 ### `health` — Health & Wellness
 
 ```bash
-uv run garmin health steps today
-uv run garmin health steps -7d:today
-uv run garmin health heart-rate today
-uv run garmin health sleep yesterday
-uv run garmin health body-battery today
-uv run garmin health body-battery -7d:today
-uv run garmin health hrv today
-uv run garmin health stress today
-uv run garmin health weight -30d:today
+garmin health steps today
+garmin health steps -7d:today
+garmin health heart-rate today
+garmin health sleep yesterday
+garmin health body-battery today
+garmin health body-battery -7d:today
+garmin health hrv today
+garmin health stress today
+garmin health weight -30d:today
 ```
 
 ### `stats` — Summaries & Training Status
 
 ```bash
-uv run garmin stats summary today       # steps, distance, HR, floors, calories, SpO₂
-uv run garmin stats training-status today
-uv run garmin stats readiness today
-uv run garmin stats records             # personal records
-uv run garmin stats progress -30d today # progress between two dates
-uv run garmin stats weekly              # weekly running volume breakdown
+garmin stats summary today       # steps, distance, HR, floors, calories, SpO₂
+garmin stats training-status today
+garmin stats readiness today
+garmin stats records             # personal records
+garmin stats progress -30d today # progress between two dates
+garmin stats weekly              # weekly running volume breakdown
 ```
 
 ### `workout` — Create & Manage Workouts
 
 ```bash
 # Validate a workout spec (dry-run)
-uv run garmin workout validate --json '{"workouts":[{"name":"Easy 5k","sport":"running","steps":[{"type":"warmup","duration":{"time":"10min"}},{"type":"interval","duration":{"distance":"5km"},"target":{"pace":["5:30/km","5:00/km"]}},{"type":"cooldown","duration":{"time":"5min"}}]}]}'
+garmin workout validate --json '{"workouts":[{"name":"Easy 5k","sport":"running","steps":[{"type":"warmup","duration":{"time":"10min"}},{"type":"interval","duration":{"distance":"5km"},"target":{"pace":["5:30/km","5:00/km"]}},{"type":"cooldown","duration":{"time":"5min"}}]}]}'
 
 # Validate from file
-uv run garmin workout validate --file workout.json
+garmin workout validate --file workout.json
 
 # Create and schedule a workout
-uv run garmin workout create --json '{"workouts":[{"name":"Track","sport":"running","date":"2026-07-22","steps":[...]}]}'
+garmin workout create --json '{"workouts":[{"name":"Track","sport":"running","date":"2026-07-22","steps":[...]}]}'
 
 # List saved workouts
-uv run garmin workout list
+garmin workout list
 
 # Get/delete a workout
-uv run garmin workout get <id>
-uv run garmin workout delete <id>
+garmin workout get <id>
+garmin workout delete <id>
 
 # Schedule/unschedule
-uv run garmin workout schedule <id> <date>
-uv run garmin workout unschedule <id>
+garmin workout schedule <id> <date>
+garmin workout unschedule <id>
 
 # List scheduled workouts for a date range
-uv run garmin workout scheduled today:+7d
+garmin workout scheduled today:+7d
 
 # Get the workout JSON schema
-uv run garmin workout schema
+garmin workout schema
 ```
 
 **Workout step types:** `warmup`, `interval`, `recovery`, `cooldown`
@@ -238,17 +263,17 @@ uv run garmin workout schema
 ### `badge` — Badges & Challenges
 
 ```bash
-uv run garmin badge earned --limit 10
-uv run garmin badge in-progress
-uv run garmin badge available --start 0 --limit 20
-uv run garmin badge adhoc --start 0 --limit 20
-uv run garmin badge challenges
+garmin badge earned --limit 10
+garmin badge in-progress
+garmin badge available --start 0 --limit 20
+garmin badge adhoc --start 0 --limit 20
+garmin badge challenges
 ```
 
 ### `capabilities` — Agent Discovery
 
 ```bash
-uv run garmin capabilities
+garmin capabilities
 ```
 
 Returns the full command tree plus workout JSON schema in one call. Use this
@@ -259,26 +284,26 @@ to discover the interface if you're unsure what commands are available.
 ### "How was my run today?"
 
 ```bash
-uv run garmin activity list --type running --limit 1 | jq '.data[0] | {name, distance, duration, pace: .averageSpeed, hr: .averageHR}'
+garmin activity list --type running --limit 1 | jq '.data[0] | {name, distance, duration, pace: .averageSpeed, hr: .averageHR}'
 ```
 
 ### "What's my weekly mileage?"
 
 ```bash
-uv run garmin stats weekly | jq '.data'
+garmin stats weekly | jq '.data'
 ```
 
 ### "How did I sleep last night?"
 
 ```bash
-uv run garmin --format json-pretty health sleep yesterday
+garmin --format json-pretty health sleep yesterday
 ```
 
 ### "Show me my HRV trend this week"
 
 ```bash
 for i in $(seq 6 -1 0); do
-  uv run garmin health hrv -${i}d | jq '.data'
+  garmin health hrv -${i}d | jq '.data'
 done
 ```
 
@@ -286,7 +311,7 @@ done
 
 ```bash
 # Download the FIT file for a recent run and extract physiological metrics
-uv run garmin activity download <recent_run_id> --format-file json --out - | \
+garmin activity download <recent_run_id> --format-file json --out - | \
   jq '.physiological_metrics_mesgs[0] | {vo2max_ml_kg_min: (.metmax * 3.5 / 65536), performance_condition}'
 ```
 
@@ -299,7 +324,7 @@ intensity, and any interval structure they want.
 ### "I got a new personal record — show me"
 
 ```bash
-uv run garmin stats records | jq '.data'
+garmin stats records | jq '.data'
 ```
 
 ## Exit Codes
