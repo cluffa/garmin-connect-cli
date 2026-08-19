@@ -12,8 +12,8 @@ pipelines, or other tools — without screen-scraping or fragile text parsing.
   `start:end`, `YYYY-MM-DD`, `YYYY-MM-DD:YYYY-MM-DD`)
 - Optional `--full` flag to return raw Garmin API payloads instead of slim
   projections
-- [Claude Code skill](https://github.com/cluffa/garmin-connect-skill) —
-  teaches AI agents how to use this CLI
+- Bundled [Claude Code skill](skills/garmin-connect/SKILL.md) — teaches AI
+  agents how to use this CLI, versioned in lockstep with it
 
 ## Setup
 
@@ -291,6 +291,23 @@ This CLI was designed from the ground up for **agent-driven consumption**:
    state.
 7. **Single binary** — `uv sync` + environment variables + `uv run garmin`.
    Nothing to install globally.
+
+## Claude Code Skill
+
+A Claude Code skill ships with this repo at
+[`skills/garmin-connect/SKILL.md`](skills/garmin-connect/SKILL.md). It
+documents every command, flag, date spec, exit code, and common recipe so an
+agent can drive the CLI without trial and error.
+
+Install it by linking the skill directory into your skills path:
+
+```bash
+ln -s "$PWD/skills/garmin-connect" ~/.claude/skills/garmin-connect
+```
+
+The skill lives here rather than in its own repo so that a change to a flag
+or output shape and the doc update land in the same commit. Its `version`
+frontmatter tracks `project.version` in `pyproject.toml`.
 
 ## Development
 
