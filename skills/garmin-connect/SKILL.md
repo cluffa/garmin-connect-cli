@@ -1,6 +1,6 @@
 ---
 name: garmin-connect
-version: 0.1.1
+version: 0.2.0
 description: >
   Use this skill whenever the user asks about Garmin Connect data — retrieving
   activities, health metrics, sleep, steps, heart rate, body battery, HRV,
@@ -19,8 +19,9 @@ Agent-first CLI for Garmin Connect. Every command emits a consistent JSON
 envelope `{"ok":true,"data":...}` or `{"ok":false,"error":{...}}` — no
 screen-scraping needed.
 
-**Repo:** `github.com/cluffa/garmin-connect-cli`
-**Skill repo:** `github.com/cluffa/garmin-connect-skill`
+**Repo:** `github.com/cluffa/garmin-connect-cli` — this skill ships inside
+the CLI repo at `skills/garmin-connect/`, so it is versioned alongside the
+interface it documents.
 
 ## Install
 
@@ -43,6 +44,19 @@ uv tool install --reinstall git+https://github.com/cluffa/garmin-connect-cli
 
 If `garmin` isn't found after install, ensure uv's bin dir is on PATH with
 `uv tool update-shell` (then restart the shell).
+
+### Installing this skill
+
+The skill lives in the CLI repo. Clone it and link the skill directory into
+your Claude Code skills path so the two stay in lockstep:
+
+```bash
+git clone https://github.com/cluffa/garmin-connect-cli
+ln -s "$PWD/garmin-connect-cli/skills/garmin-connect" ~/.claude/skills/garmin-connect
+```
+
+Copying instead of symlinking works too, but then `git pull` no longer keeps
+the skill current with the CLI.
 
 ## Setup
 
@@ -339,8 +353,8 @@ garmin stats records | jq '.data'
 
 ## Keeping This Skill Current
 
-This skill documents the garmin-connect-cli interface. The source of truth
-for commands, flags, and behavior is the CLI repo at
-`github.com/cluffa/garmin-connect-cli`. When the CLI gains new commands,
-changes flags, or alters output format, this SKILL.md must be updated to
-match. See the CLAUDE.md in this repo for cross-repo update instructions.
+This skill documents the garmin-connect-cli interface and lives in the same
+repo as that interface, at `skills/garmin-connect/SKILL.md`. Any change to a
+command, flag, output format, or error type belongs in the same commit as the
+update to this file — that is the reason the two are not separate repos. See
+the repo's `CLAUDE.md` for the version-sync rule.
