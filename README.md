@@ -156,20 +156,53 @@ Note: `activity download` uses `--format-file` (values: `tcx`, `gpx`, `fit`) ins
 | Command | Description |
 |---------|-------------|
 | `health steps [range]` | Daily steps over a date or range |
-| `health heart-rate [date]` | Heart-rate data for a date |
-| `health sleep [date]` | Sleep data for a date |
+| `health heart-rate [range]` | Heart-rate data over a date or range |
+| `health sleep [range]` | Sleep data over a date or range |
 | `health body-battery [range]` | Body Battery over a date or range |
-| `health hrv [date]` | HRV data for a date |
-| `health stress [date]` | Stress data for a date |
+| `health hrv [range]` | HRV data over a date or range |
+| `health stress [range]` | Stress data over a date or range |
 | `health weight [range]` | Weigh-ins over a date or range |
+| `health weekly-steps [date] [--weeks N]` | Weekly step aggregates (default 52 weeks) in one request |
+| `health weekly-stress [date] [--weeks N]` | Weekly stress aggregates (default 52 weeks) in one request |
+
+### Range fetching and request cost
+
+Every `health` command accepts a range, but they do not all cost the same.
+
+`steps`, `body-battery`, `weight`, `weekly-steps`, and `weekly-stress` map to
+range-capable Garmin endpoints: **one request covers the whole span**, and the
+payload is returned as the API shapes it.
+
+`heart-rate`, `sleep`, `hrv`, and `stress` — plus `stats readiness` and
+`stats training-status` — have no upstream range endpoint, so a range is
+**one request per day**. The loop lives in the CLI rather than in the caller,
+which keeps the request count identical but collapses N results into one
+JSON array. For these commands:
+
+- A **single date** returns that day's payload directly, unchanged from
+  before ranges existed.
+- A **range** returns an array of `{"date": "YYYY-MM-DD", "data": {...}}`,
+  ascending, one entry per day inclusive.
+
+```bash
+uv run garmin health hrv -30d:today | jq '.data[] | {date, avg: .data.weeklyAvg}'
+```
+
+Days Garmin has no data for return `"data": null`. A day whose request fails
+returns `"data": null` and an `"error"` string, leaving the rest of the range
+intact; the command only fails outright (exit 4) when every day failed.
+
+Ranges are capped at **366 days**, since each day is a separate request to an
+undocumented API. Exceeding the cap is a usage error; `--max-days` raises it
+deliberately.
 
 ### `stats` — Summaries and training status
 
 | Command | Description |
 |---------|-------------|
 | `stats summary [date]` | Daily user summary (steps, distance, HR, floors, calories, intensity minutes, avg SpO₂, avg respiration, stress, Body Battery) |
-| `stats training-status [date]` | Training status (load, load ratio, HRV, focus) |
-| `stats readiness [date]` | Training readiness score |
+| `stats training-status [range]` | Training status (load, load ratio, HRV, focus) over a date or range |
+| `stats readiness [range]` | Training readiness score over a date or range |
 | `stats records` | Personal records |
 | `stats progress <start> <end>` | Progress summary between two dates |
 | `stats weekly` | Weekly running volume: total miles, previous week, 4-week avg, longest run, run count |

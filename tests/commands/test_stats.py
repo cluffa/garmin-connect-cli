@@ -24,6 +24,12 @@ class FakeClient:
     def get_personal_record(self):
         return [{"typeId": 1}]
 
+    def get_training_status(self, cdate):
+        return {"cdate": cdate, "trainingStatus": "productive", "currentLoad": 420}
+
+    def get_training_readiness(self, cdate):
+        return {"cdate": cdate, "score": 72}
+
     def get_progress_summary_between_dates(self, start, end, metric="distance", groupbyactivities=True):
         return {"start": start, "end": end}
 
@@ -180,3 +186,35 @@ def test_weekly_respects_full_flag(monkeypatch):
     data = json.loads(result.stdout)["data"]
     # Same keys because project_weekly_volume is a passthrough.
     assert data["week_total_mi"] == 16.0
+
+
+# ── Range support on single-date-upstream endpoints ────────────
+
+
+def test_readiness_single_date_shape_is_unchanged(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["stats", "readiness", "2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert isinstance(data, dict)
+    assert data["score"] == 72
+
+
+def test_readiness_range(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["stats", "readiness", "2026-07-13:2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert [e["date"] for e in data] == ["2026-07-13", "2026-07-14", "2026-07-15"]
+    assert [e["data"]["score"] for e in data] == [72, 72, 72]
+
+
+def test_training_status_range_projects_each_day(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["stats", "training-status", "2026-07-14:2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert len(data) == 2
+    # The training_status projection remaps currentLoad -> load.
+    assert data[0]["data"]["status"] == "productive"
+    assert data[0]["data"]["load"] == 420

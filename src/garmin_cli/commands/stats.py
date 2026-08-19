@@ -7,10 +7,17 @@ import typer
 from garmin_cli import client, dates
 from garmin_cli.output import command_output
 from garmin_cli.projections import project
+from garmin_cli.series import MAX_RANGE_DAYS, day_series
 
 _METERS_PER_MILE = 1609.34
 
 stats_app = typer.Typer(help="Summaries and training status.", no_args_is_help=True)
+
+_MAX_DAYS_OPT = typer.Option(
+    MAX_RANGE_DAYS,
+    "--max-days",
+    help="Cap on days fetched for a range; each day is one request to Garmin.",
+)
 
 
 @stats_app.command()
@@ -25,21 +32,31 @@ def summary(date_str: str = typer.Argument("today")):
 
 @stats_app.command(name="training-status")
 @command_output
-def training_status(date_str: str = typer.Argument("today")):
-    """Training status for a date."""
-    return project(
+def training_status(
+    date_range: str = typer.Argument("today"),
+    max_days: int = _MAX_DAYS_OPT,
+):
+    """Training status for a date or range."""
+    return day_series(
         "training_status",
-        client.load_client().get_training_status(dates.parse_date(date_str).isoformat()),
+        client.load_client().get_training_status,
+        date_range,
+        max_days,
     )
 
 
 @stats_app.command()
 @command_output
-def readiness(date_str: str = typer.Argument("today")):
-    """Training readiness for a date."""
-    return project(
+def readiness(
+    date_range: str = typer.Argument("today"),
+    max_days: int = _MAX_DAYS_OPT,
+):
+    """Training readiness for a date or range."""
+    return day_series(
         "readiness",
-        client.load_client().get_training_readiness(dates.parse_date(date_str).isoformat()),
+        client.load_client().get_training_readiness,
+        date_range,
+        max_days,
     )
 
 

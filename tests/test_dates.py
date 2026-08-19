@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from garmin_cli.dates import parse_date, parse_range
+from garmin_cli.dates import is_range, parse_date, parse_range
 from garmin_cli.output import UsageError
 
 REF = date(2026, 7, 15)
@@ -50,3 +50,19 @@ def test_range_relative():
 
 def test_range_single_date():
     assert parse_range("today", today=REF) == (REF, REF)
+
+
+def test_is_range_detects_two_ended_specs():
+    assert is_range("-7d:today")
+    assert is_range("2026-07-01:2026-07-31")
+
+
+def test_is_range_rejects_single_specs():
+    assert not is_range("today")
+    assert not is_range("2026-07-15")
+    assert not is_range("-7d")
+
+
+def test_is_range_ignores_iso_datetimes():
+    # A time component carries colons but is not a range.
+    assert not is_range("2026-07-15T06:30:00")
