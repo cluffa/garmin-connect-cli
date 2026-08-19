@@ -1,6 +1,6 @@
 ---
 name: garmin-connect
-version: 0.2.0
+version: 0.3.0
 description: >
   Use this skill whenever the user asks about Garmin Connect data — retrieving
   activities, health metrics, sleep, steps, heart rate, body battery, HRV,
@@ -215,28 +215,69 @@ names where known (fit4ruby/Intervals.icu sources).
 
 ### `health` — Health & Wellness
 
+Every command here takes a date **or a range**:
+
 ```bash
 garmin health steps today
 garmin health steps -7d:today
-garmin health heart-rate today
-garmin health sleep yesterday
-garmin health body-battery today
+garmin health heart-rate -7d:today
+garmin health sleep -30d:today
 garmin health body-battery -7d:today
-garmin health hrv today
-garmin health stress today
+garmin health hrv -90d:today
+garmin health stress -30d:today
 garmin health weight -30d:today
+
+# Weekly aggregates — 52 weeks in a single request
+garmin health weekly-steps
+garmin health weekly-stress --weeks 12
 ```
+
+**Prefer a range over a loop.** Never shell-loop day by day; pass the range
+and let the CLI do it. One command returns one array, instead of N tool
+results filling your context.
+
+#### Two response shapes
+
+`steps`, `body-battery`, `weight`, `weekly-steps`, and `weekly-stress` hit
+range-capable Garmin endpoints — one request, whatever the span, and the
+payload comes back as the API returns it.
+
+`heart-rate`, `sleep`, `hrv`, and `stress` have no upstream range endpoint,
+so a range costs **one request per day**. For these:
+
+- A **single date** returns that day's payload directly (a dict).
+- A **range** returns an array of `{"date": "YYYY-MM-DD", "data": {...}}`,
+  ascending, one entry per day inclusive.
+
+```bash
+garmin health hrv -7d:today | jq '.data[] | {date, avg: .data.weeklyAvg}'
+```
+
+Days with no recording come back as `"data": null`. A day whose request
+fails gets `"data": null` plus an `"error"` string and the rest of the range
+still returns — check for `error` keys rather than assuming every entry is
+good. If *every* day fails, the command exits 4 with an `api` error.
+
+Ranges are capped at **366 days** to avoid hammering an undocumented API;
+past that you get a `usage` error. Raise it deliberately with `--max-days`
+if you truly need more.
 
 ### `stats` — Summaries & Training Status
 
 ```bash
 garmin stats summary today       # steps, distance, HR, floors, calories, SpO₂
 garmin stats training-status today
+garmin stats training-status -30d:today   # one entry per day
 garmin stats readiness today
+garmin stats readiness -14d:today         # one entry per day
 garmin stats records             # personal records
 garmin stats progress -30d today # progress between two dates
 garmin stats weekly              # weekly running volume breakdown
 ```
+
+`training-status` and `readiness` are single-date upstream, so they follow
+the same two-shape rule as `health hrv` above: bare date → dict, range →
+array of `{"date", "data"}` at one request per day, `--max-days` capped.
 
 ### `workout` — Create & Manage Workouts
 
@@ -316,9 +357,29 @@ garmin --format json-pretty health sleep yesterday
 ### "Show me my HRV trend this week"
 
 ```bash
-for i in $(seq 6 -1 0); do
-  garmin health hrv -${i}d | jq '.data'
-done
+garmin health hrv -7d:today | jq '.data[] | {date, avg: .data.weeklyAvg}'
+```
+
+Do **not** loop a day at a time — one range call replaces seven, and keeps
+seven tool results out of your context.
+
+### "How has my training load trended this month?"
+
+```bash
+garmin stats training-status -30d:today | jq '.data[] | {date, load: .data.load, status: .data.status}'
+```
+
+### "Am I sleeping less than I was?"
+
+```bash
+garmin health sleep -60d:today | jq '[.data[] | select(.data != null) | .data.duration_hours] | add / length'
+```
+
+### "What's my step trend over the past year?"
+
+```bash
+# One request, 52 weekly aggregates — no per-day fetching.
+garmin health weekly-steps | jq '.data[] | {week: .calendarDate, steps: .totalSteps}'
 ```
 
 ### "What's my VO₂ max?"
