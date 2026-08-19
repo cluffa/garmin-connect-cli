@@ -98,12 +98,14 @@ def project_sleep(sleep: dict) -> dict:
             if sec is not None:
                 result[key] = round(sec / total_sec * 100, 2)
 
-        sleep_score_val = (
-            dto.get("sleepScores", {})
-            .get("overall", {})
-            .get("value", {})
-            .get("qualifierValue")
-        )
+        sleep_score_val = None
+        sleep_scores = dto.get("sleepScores")
+        if isinstance(sleep_scores, dict):
+            overall = sleep_scores.get("overall")
+            if isinstance(overall, dict):
+                val = overall.get("value")
+                if isinstance(val, (int, float)):
+                    sleep_score_val = val
         if sleep_score_val is not None:
             result["sleep_score"] = sleep_score_val
         else:
