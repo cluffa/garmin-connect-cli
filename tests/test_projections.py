@@ -198,7 +198,7 @@ SLEEP_RAW = {
     "dailySleepDTO": {
         "sleepTimeFromLocal": "2026-07-15T22:00:00",
         "sleepTimeToLocal": "2026-07-16T06:30:00",
-        "sleepScores": {"overall": {"value": {"qualifierValue": 85}}},
+        "sleepScores": {"overall": {"value": 85, "qualifierKey": "GOOD"}},
         "sleepTimeSeconds": 28800,
         "deepSleepSeconds": 5400,
         "lightSleepSeconds": 14400,
@@ -220,6 +220,21 @@ def test_project_sleep():
     assert out["awake_pct"] == pytest.approx(12.5)
     assert out["sleep_score"] == 85
     assert out["resting_hr"] == 48
+
+
+def test_project_sleep_score_int_value():
+    """Regression: the real Garmin payload has overall.value as an int
+    (e.g. 89), not a nested dict. The old chained .get crashed with
+    'int' object has no attribute 'get' — the whole sleep command died."""
+    raw = {
+        "dailySleepDTO": {
+            "sleepTimeSeconds": 28800,
+            "sleepScores": {"overall": {"value": 89, "qualifierKey": "GOOD"}},
+        }
+    }
+    out = project_sleep(raw)
+    assert out["duration_hours"] == 8.0
+    assert out["sleep_score"] == 89
 
 
 def test_project_sleep_minimal():
