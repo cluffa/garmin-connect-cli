@@ -29,9 +29,20 @@ def _looks_like_iso_datetime(text: str) -> bool:
     return "T" in text
 
 
+def is_range(text: str) -> bool:
+    """Return ``True`` when *text* is a two-ended range spec (``start:end``).
+
+    Callers use this to tell ``hrv -7d:today`` (a series) apart from
+    ``hrv today`` (a single day), since ``parse_range`` collapses both to a
+    pair of dates.
+    """
+    text = text.strip()
+    return ":" in text and not _looks_like_iso_datetime(text)
+
+
 def parse_range(text: str, *, today: date | None = None) -> tuple[date, date]:
     text = text.strip()
-    if ":" in text and not _looks_like_iso_datetime(text):
+    if is_range(text):
         start_s, end_s = text.split(":", 1)
         return parse_date(start_s, today=today), parse_date(end_s, today=today)
     single = parse_date(text, today=today)

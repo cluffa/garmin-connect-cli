@@ -33,6 +33,12 @@ class FakeClient:
     def get_weigh_ins(self, start, end):
         return [{"start": start, "end": end}]
 
+    def get_weekly_steps(self, end, weeks):
+        return [{"end": end, "weeks": weeks, "totalSteps": 70000}]
+
+    def get_weekly_stress(self, end, weeks):
+        return [{"end": end, "weeks": weeks, "value": 31}]
+
 
 def test_heart_rate_default_today(monkeypatch):
     monkeypatch.setattr(client, "load_client", lambda: FakeClient())
@@ -94,3 +100,106 @@ def test_weight_range(monkeypatch):
     assert result.exit_code == 0
     data = json.loads(result.stdout)["data"]
     assert data[0] == {"start": "2026-07-08", "end": "2026-07-15"}
+
+
+# ── Range support on single-date-upstream endpoints ────────────
+
+
+def test_hrv_range_returns_one_entry_per_day(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["health", "hrv", "2026-07-13:2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert [e["date"] for e in data] == ["2026-07-13", "2026-07-14", "2026-07-15"]
+    assert data[0]["data"]["weeklyAvg"] == 42
+
+
+def test_sleep_range_projects_each_day(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["health", "sleep", "2026-07-14:2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert len(data) == 2
+    assert data[0]["data"]["duration_hours"] == 8.0
+
+
+def test_stress_range(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["health", "stress", "2026-07-14:2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert [e["data"]["avgStressLevel"] for e in data] == [27, 27]
+
+
+def test_heart_rate_range(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["health", "heart-rate", "2026-07-14:2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert [e["data"]["resting"] for e in data] == [48, 48]
+
+
+def test_range_authenticates_once_not_once_per_day(monkeypatch):
+    """A 30-day range must not re-login 30 times."""
+    calls = {"n": 0}
+
+    def counting_load_client():
+        calls["n"] += 1
+        return FakeClient()
+
+    monkeypatch.setattr(client, "load_client", counting_load_client)
+    result = runner.invoke(app, ["health", "hrv", "2026-07-01:2026-07-30"])
+    assert result.exit_code == 0
+    assert len(json.loads(result.stdout)["data"]) == 30
+    assert calls["n"] == 1
+
+
+def test_range_over_limit_exits_usage_error(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(
+        app, ["health", "hrv", "2026-01-01:2026-07-15", "--max-days", "10"]
+    )
+    assert result.exit_code == 2
+    err = json.loads(result.stderr)
+    assert err["ok"] is False
+    assert err["error"]["type"] == "usage"
+
+
+def test_hrv_single_date_shape_is_unchanged(monkeypatch):
+    """Adding ranges must not change what a bare date returns."""
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["health", "hrv", "2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert isinstance(data, dict)
+    assert data["weeklyAvg"] == 42
+
+
+# ── Natively range-capable weekly aggregates ───────────────────
+
+
+def test_weekly_steps(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["health", "weekly-steps", "2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert data[0]["weeks"] == 52
+    assert data[0]["totalSteps"] == 70000
+
+
+def test_weekly_steps_custom_weeks(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(
+        app, ["health", "weekly-steps", "2026-07-15", "--weeks", "12"]
+    )
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["data"][0]["weeks"] == 12
+
+
+def test_weekly_stress(monkeypatch):
+    monkeypatch.setattr(client, "load_client", lambda: FakeClient())
+    result = runner.invoke(app, ["health", "weekly-stress", "2026-07-15"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)["data"]
+    assert data[0]["value"] == 31
+    assert data[0]["end"] == "2026-07-15"
