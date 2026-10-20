@@ -1,6 +1,6 @@
 ---
 name: garmin-connect
-version: 0.3.0
+version: 0.4.0
 description: >
   Use this skill whenever the user asks about Garmin Connect data — retrieving
   activities, health metrics, sleep, steps, heart rate, body battery, HRV,
@@ -308,6 +308,31 @@ garmin workout scheduled today:+7d
 # Get the workout JSON schema
 garmin workout schema
 ```
+
+#### Audio notes
+
+Spoken MP3 notes (max 15 seconds) attached to a workout or a single step;
+a music-capable watch plays them through paired headphones as the step
+begins. Targets are mutually exclusive: `--step <stepOrder>` or `--workout`.
+
+```bash
+# Attach a note to one step (stepOrder as shown by `workout get`)
+garmin workout audio-note add <id> --file cue.mp3 --step 3
+
+# Attach a note to the workout itself
+garmin workout audio-note add <id> --file intro.mp3 --workout
+
+# Show which steps/workout carry notes (with their UUIDs)
+garmin workout audio-note list <id>
+
+# Remove a note (also deletes the uploaded audio)
+garmin workout audio-note remove <id> --step 3
+garmin workout audio-note remove <id> --workout
+```
+
+Adding over an existing note replaces it and deletes the old upload.
+`list` returns `{"workoutAudioNoteUuid": ..., "steps": [{"stepOrder": N,
+"audioNoteUuid": ...}]}`.
 
 **Workout step types:** `warmup`, `interval`, `recovery`, `cooldown`
 **Duration:** `{"time": "10min"}` or `{"distance": "5km"}`
