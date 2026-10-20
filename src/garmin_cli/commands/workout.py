@@ -1,5 +1,5 @@
 """Workout sub-commands: create, validate, list, get, delete, schedule,
-unschedule, scheduled, schema."""
+unschedule, scheduled, schema, and the audio-note sub-group."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from garmin_cli.output import (
     emit_batch,
     emit_error,
 )
+from garmin_cli.workouts import audio_notes
 from garmin_cli.workouts.schema import load_plan, spec_json_schema
 from garmin_cli.workouts.translate import summarize, translate
 
@@ -178,3 +179,67 @@ def scheduled(date_range: str = typer.Argument("today")):
 def schema():
     """Emit the simplified workout JSON schema."""
     return spec_json_schema()
+
+
+# ── audio notes ─────────────────────────────────────────────────────
+# Spoken MP3 notes (max 15 s) attached to a workout or one of its steps.
+# The garminconnect library has no support for them, so these commands go
+# through garmin_cli.workouts.audio_notes on the raw connectapi client.
+
+audio_note_app = typer.Typer(
+    help="Manage spoken audio notes on workouts and steps.",
+    no_args_is_help=True,
+)
+workout_app.add_typer(audio_note_app, name="audio-note")
+
+
+def _resolve_step(step: int | None, workout_flag: bool) -> int | None:
+    """Map the --step/--workout pair to a stepOrder (None = whole workout)."""
+    if step is not None and workout_flag:
+        raise UsageError("provide only one of --step or --workout")
+    if step is None and not workout_flag:
+        raise UsageError("specify a target: --step <stepOrder> or --workout")
+    return step
+
+
+@audio_note_app.command(name="add")
+@command_output
+def audio_note_add(
+    workout_id: str = typer.Argument(...),
+    file_opt: str = typer.Option(..., "--file", help="MP3 file (max 15 seconds)."),
+    step: int | None = typer.Option(
+        None, "--step", help="stepOrder of the step to attach the note to."
+    ),
+    workout_flag: bool = typer.Option(
+        False, "--workout", help="Attach the note to the workout itself."
+    ),
+):
+    """Upload an MP3 and attach it as an audio note."""
+    step_order = _resolve_step(step, workout_flag)
+    api = client.load_client().client
+    return audio_notes.add_note(api, workout_id, file_opt, step_order)
+
+
+@audio_note_app.command(name="list")
+@command_output
+def audio_note_list(workout_id: str = typer.Argument(...)):
+    """Show which steps (and the workout itself) carry audio notes."""
+    api = client.load_client().client
+    return audio_notes.list_notes(api, workout_id)
+
+
+@audio_note_app.command(name="remove")
+@command_output
+def audio_note_remove(
+    workout_id: str = typer.Argument(...),
+    step: int | None = typer.Option(
+        None, "--step", help="stepOrder of the step to remove the note from."
+    ),
+    workout_flag: bool = typer.Option(
+        False, "--workout", help="Remove the workout-level note."
+    ),
+):
+    """Remove an audio note from a step or from the workout itself."""
+    step_order = _resolve_step(step, workout_flag)
+    api = client.load_client().client
+    return audio_notes.remove_note(api, workout_id, step_order)
