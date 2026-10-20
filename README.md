@@ -88,6 +88,16 @@ schema — everything an agent needs to discover the interface in a single call.
 | `workout unschedule <id>` | Remove a scheduled workout |
 | `workout scheduled <range>` | List scheduled workouts for a date or range |
 | `workout schema` | Print the workout JSON schema |
+| `workout audio-note add <id> --file cue.mp3 (--step N \| --workout)` | Upload an MP3 (max 15 s) and attach it as a spoken note |
+| `workout audio-note list <id>` | Show which steps (and the workout itself) carry audio notes |
+| `workout audio-note remove <id> (--step N \| --workout)` | Remove an audio note and delete its upload |
+
+**Audio notes:** Garmin Connect supports short spoken notes attached to a
+workout as a whole or to an individual step (`stepOrder`, as shown by
+`workout get`); a music-capable watch plays them through paired headphones
+as the step begins. `audio-note add` uploads the MP3 and attaches it —
+adding over an existing note replaces it and deletes the old upload.
+`--step` and `--workout` are mutually exclusive; exactly one is required.
 
 **Workout spec format** (JSON):
 
