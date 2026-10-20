@@ -116,10 +116,10 @@ def add_note(api, workout_id, file_path, step_order: int | None = None) -> dict:
 
     With ``step_order=None`` the note attaches to the workout itself.
     Replacing an existing note deletes the old upload afterwards, since
-    Garmin leaves replaced uploads orphaned otherwise.
+    Garmin leaves replaced uploads orphaned otherwise.  The target is
+    resolved before uploading, and the new upload is deleted if saving the
+    workout fails, so a bad step or a rejected PUT leaves no orphan behind.
     """
-    meta = upload_note(api, file_path)
-    uuid = meta["audioNoteUuid"]
     workout = get_workout(api, workout_id)
     if step_order is None:
         holder, fields, target = (
@@ -135,10 +135,16 @@ def add_note(api, workout_id, file_path, step_order: int | None = None) -> dict:
             )
         fields = ("stepAudioNote", "stepAudioNoteUuid")
         target = {"stepOrder": step_order}
+    meta = upload_note(api, file_path)
+    uuid = meta["audioNoteUuid"]
     old_uuid = holder.get(fields[1])
     holder[fields[0]] = meta
     holder[fields[1]] = uuid
-    api.put("connectapi", _workout_path(workout_id), json=workout, api=True)
+    try:
+        api.put("connectapi", _workout_path(workout_id), json=workout, api=True)
+    except Exception:
+        _delete_note(api, uuid)
+        raise
     if old_uuid and old_uuid != uuid:
         _delete_note(api, old_uuid)
     return {

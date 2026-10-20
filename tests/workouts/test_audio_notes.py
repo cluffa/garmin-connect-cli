@@ -154,6 +154,19 @@ def test_add_note_replacing_deletes_old_upload(api, mp3):
 def test_add_note_missing_step(api, mp3):
     with pytest.raises(UsageError, match="stepOrder 99"):
         audio_notes.add_note(api, 42, mp3, step_order=99)
+    assert api.posts == []  # target checked before uploading
+
+
+def test_add_note_failed_put_deletes_new_upload(api, mp3):
+    def failing_put(*args, **kwargs):
+        raise RuntimeError("PUT rejected")
+
+    api.put = failing_put
+    with pytest.raises(RuntimeError):
+        audio_notes.add_note(api, 42, mp3, step_order=1)
+    assert api.deletes == [
+        ("workout-service/workout/audionote", {"audiouuid": "uuid-1"})
+    ]
 
 
 def test_add_note_missing_file(api, tmp_path):
